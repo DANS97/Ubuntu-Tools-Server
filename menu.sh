@@ -23,11 +23,6 @@ get_system_info() {
 # Function to display menu
 display_menu() {
     get_system_info
-    echo -e "\e[34m╔══════════════════════════════════════╗\e[0m"
-    echo -e "\e[34m║        Ubuntu Tools Server Menu      ║\e[0m"
-    echo -e "\e[34m╚══════════════════════════════════════╝\e[0m"
-    echo -e "\e[31m0. Exit\e[0m"
-    echo ""
     printf "\e[32m%-40s %s\e[0m\n" "1. Set Static IP Address" "10. Install Python3 and Pip"
     printf "\e[32m%-40s %s\e[0m\n" "2. Allow Port" "11. Install Git"
     printf "\e[32m%-40s %s\e[0m\n" "3. Install SSH Server" "12. Change Hostname"
@@ -38,6 +33,7 @@ display_menu() {
     printf "\e[32m%-40s %s\e[0m\n" "8. Install Docker" "17. Install Composer"
     printf "\e[32m%-40s %s\e[0m\n" "9. Install Node.js" "18. Setup Project Folder for Nginx"
     echo -e "\e[33m═══════════════════════════════════════\e[0m"
+    echo -e "\e[31m0. Exit\e[0m"
     echo -e "\e[37mCreated by Mahardian Ramadhani\e[0m"
 }
 
