@@ -263,32 +263,48 @@ show_status() {
 
     # Check services
     echo "Service Status:"
-    services=("apache2" "nginx" "mysql" "ssh" "docker")
-    for service in "${services[@]}"; do
-        if systemctl is-active --quiet "$service"; then
-            echo "  $service: Running"
+    services=("ssh" "apache2" "nginx" "mysql" "docker")
+    service_names=("SSH Server" "Apache Web Server" "Nginx Web Server" "MySQL Server" "Docker")
+    for i in "${!services[@]}"; do
+        service="${services[$i]}"
+        name="${service_names[$i]}"
+        if systemctl is-active --quiet "$service" 2>/dev/null; then
+            echo "  $name: Running"
         elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
-            echo "  $service: Installed (not running)"
+            echo "  $name: Installed (not running)"
         else
-            echo "  $service: Not installed"
+            echo "  $name: Not installed"
         fi
     done
 
     echo ""
-    echo "Package Versions:"
-    packages=("php" "nodejs" "python3" "git" "msodbcsql17")
-    for pkg in "${packages[@]}"; do
+    echo "Package Status:"
+    packages=("openssh-server" "apache2" "nginx" "mysql-server" "php" "php7.3" "php8.3" "php8.4" "docker-ce" "nodejs" "python3" "git" "msodbcsql17")
+    package_names=("SSH Server" "Apache" "Nginx" "MySQL Server" "PHP (Latest)" "PHP 7.3" "PHP 8.3" "PHP 8.4" "Docker" "Node.js" "Python3" "Git" "ODBC SQL Server 17")
+    for i in "${!packages[@]}"; do
+        pkg="${packages[$i]}"
+        name="${package_names[$i]}"
         if dpkg -l | grep -q "^ii.*$pkg"; then
-            version=$(dpkg -l | grep "^ii.*$pkg" | awk '{print $3}')
-            echo "  $pkg: $version"
+            version=$(dpkg -l | grep "^ii.*$pkg" | head -1 | awk '{print $3}')
+            echo "  $name: Installed (v$version)"
         else
-            echo "  $pkg: Not installed"
+            echo "  $name: Not installed"
         fi
     done
 
     echo ""
     echo "Firewall Status:"
-    sudo ufw status | head -10
+    if sudo ufw status | grep -q "Status: active"; then
+        echo "  UFW: Active"
+        sudo ufw status | grep -E "^[0-9]+|^--"
+    else
+        echo "  UFW: Inactive"
+    fi
+
+    echo ""
+    echo "Network Configuration:"
+    echo "  Current IP: $(hostname -I | awk '{print $1}')"
+    echo "  Hostname: $(hostname)"
 
     echo "======================================"
 }

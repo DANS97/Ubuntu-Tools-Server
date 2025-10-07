@@ -73,7 +73,7 @@ Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi si
 
 4. **Show Installed Tools Status**:
    - Pilih 15
-   - Lihat status services dan versi packages
+   - Lihat status lengkap semua tools (services, packages, firewall, network)
 
 ## Catatan
 
