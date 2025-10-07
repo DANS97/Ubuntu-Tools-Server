@@ -39,7 +39,8 @@ display_menu() {
     echo "12. Change Hostname"
     echo "13. Install ODBC SQL Server 17"
     echo "14. Install Nginx + ODBC SQL Server 17"
-    echo "15. Exit"
+    echo "15. Show Installed Tools Status"
+    echo "16. Exit"
     echo "======================================"
 }
 
@@ -255,10 +256,47 @@ install_nginx_odbc() {
     echo "Nginx and ODBC SQL Server 17 installed."
 }
 
+# Function to show installed tools status
+show_status() {
+    echo "Checking status of installed tools..."
+    echo "======================================"
+
+    # Check services
+    echo "Service Status:"
+    services=("apache2" "nginx" "mysql" "ssh" "docker")
+    for service in "${services[@]}"; do
+        if systemctl is-active --quiet "$service"; then
+            echo "  $service: Running"
+        elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
+            echo "  $service: Installed (not running)"
+        else
+            echo "  $service: Not installed"
+        fi
+    done
+
+    echo ""
+    echo "Package Versions:"
+    packages=("php" "nodejs" "python3" "git" "msodbcsql17")
+    for pkg in "${packages[@]}"; do
+        if dpkg -l | grep -q "^ii.*$pkg"; then
+            version=$(dpkg -l | grep "^ii.*$pkg" | awk '{print $3}')
+            echo "  $pkg: $version"
+        else
+            echo "  $pkg: Not installed"
+        fi
+    done
+
+    echo ""
+    echo "Firewall Status:"
+    sudo ufw status | head -10
+
+    echo "======================================"
+}
+
 # Main menu loop
 while true; do
     display_menu
-    echo "Choose an option (1-15):"
+    echo "Choose an option (1-16):"
     read -r choice
 
     case $choice in
@@ -305,11 +343,14 @@ while true; do
             install_nginx_odbc
             ;;
         15)
+            show_status
+            ;;
+        16)
             echo "Exiting..."
             exit 0
             ;;
         *)
-            echo "Invalid option. Please choose 1-15."
+            echo "Invalid option. Please choose 1-16."
             ;;
     esac
     echo ""

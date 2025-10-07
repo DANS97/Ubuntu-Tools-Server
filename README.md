@@ -26,6 +26,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
   - Nginx + ODBC SQL Server 17 (modular)
 - **Utilitas**:
   - Change Hostname
+  - Show Installed Tools Status
 
 ## Prerequisites
 
@@ -50,7 +51,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
 
 ## Penggunaan
 
-Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan:
+Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan (1-16):
 
 - Masukkan nomor opsi (1-15)
 - Ikuti instruksi interaktif
@@ -69,6 +70,10 @@ Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi si
 
 3. **Install Nginx + ODBC**:
    - Pilih 14
+
+4. **Show Installed Tools Status**:
+   - Pilih 15
+   - Lihat status services dan versi packages
 
 ## Catatan
 
@@ -95,3 +100,4 @@ Dibuat oleh Mahardian Ramadhani. Gunakan dengan bijak.
 
 - v1.0: Menu dasar dengan instalasi tools
 - v1.1: Tambah dashboard sistem, PHP versi, ODBC, modular Nginx+ODBC
+- v1.2: Tambah fitur Show Installed Tools Status
