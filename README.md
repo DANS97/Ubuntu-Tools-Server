@@ -23,6 +23,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
   - Python3 dan Pip
   - Git
   - ODBC SQL Server 17
+  - Composer
   - Nginx + ODBC SQL Server 17 (modular)
 - **Utilitas**:
   - Change Hostname
@@ -52,7 +53,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
 
 ## Penggunaan
 
-Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan (1-17):
+Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan (0-18):
 
 - Masukkan nomor opsi (1-15)
 - Ikuti instruksi interaktif
@@ -81,6 +82,12 @@ Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi si
    - Pilih tipe konfigurasi (Basic PHP-FPM atau Custom site)
    - Konfigurasi akan dibuat di sites-available dan di-symlink ke sites-enabled
 
+6. **Setup Project Folder for Nginx**:
+   - Pilih 18
+   - Masukkan path folder project (e.g., /home/dans/smart-klaim)
+   - Masukkan nama site dan server name
+   - Konfigurasi Nginx akan dibuat dan di-enable untuk akses langsung via port 80
+
 - Pastikan menjalankan sebagai root atau dengan `sudo` jika diperlukan.
 - Beberapa instalasi memerlukan koneksi internet untuk menambah repository eksternal (e.g., Microsoft ODBC).
 - Perubahan hostname memerlukan reboot untuk fully applied.
@@ -104,4 +111,4 @@ Dibuat oleh Mahardian Ramadhani. Gunakan dengan bijak.
 
 - v1.0: Menu dasar dengan instalasi tools
 - v1.1: Tambah dashboard sistem, PHP versi, ODBC, modular Nginx+ODBC
-- v1.2: Tambah fitur Show Installed Tools Status dan Setup Nginx Configuration
+- v1.2: Tambah fitur Show Installed Tools Status, Setup Nginx Configuration, Composer, dan Setup Project Folder for Nginx

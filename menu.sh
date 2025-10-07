@@ -6,43 +6,45 @@
 
 # Function to get system info
 get_system_info() {
-    echo "======================================"
-    echo "         System Information"
-    echo "======================================"
-    echo "OS: $(lsb_release -d | cut -f2)"
-    echo "Kernel: $(uname -r)"
-    echo "Hostname: $(hostname)"
-    echo "CPU: $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
-    echo "RAM: $(free -h | grep Mem | awk '{print $2}')"
-    echo "Disk Usage:"
+    echo -e "\e[33m======================================\e[0m"
+    echo -e "\e[33m         System Information\e[0m"
+    echo -e "\e[33m======================================\e[0m"
+    echo -e "\e[36mOS:\e[0m $(lsb_release -d | cut -f2)"
+    echo -e "\e[36mKernel:\e[0m $(uname -r)"
+    echo -e "\e[36mHostname:\e[0m $(hostname)"
+    echo -e "\e[36mCPU:\e[0m $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
+    echo -e "\e[36mRAM:\e[0m $(free -h | grep Mem | awk '{print $2}')"
+    echo -e "\e[36mDisk Usage:\e[0m"
     df -h / | tail -1 | awk '{print "  Total: " $2 ", Used: " $3 ", Free: " $4}'
-    echo "======================================"
+    echo -e "\e[33m======================================\e[0m"
 }
 
 # Function to display menu
 display_menu() {
     get_system_info
-    echo "    Ubuntu Tools Server Menu"
-    echo "    Created by Mahardian Ramadhani"
-    echo "======================================"
-    echo "1. Set Static IP Address"
-    echo "2. Allow Port"
-    echo "3. Install SSH Server"
-    echo "4. Install Apache Web Server"
-    echo "5. Install Nginx Web Server"
-    echo "6. Install MySQL Server"
-    echo "7. Install PHP"
-    echo "8. Install Docker"
-    echo "9. Install Node.js"
-    echo "10. Install Python3 and Pip"
-    echo "11. Install Git"
-    echo "12. Change Hostname"
-    echo "13. Install ODBC SQL Server 17"
-    echo "14. Install Nginx + ODBC SQL Server 17"
-    echo "15. Show Installed Tools Status"
-    echo "16. Setup Nginx Configuration"
-    echo "17. Exit"
-    echo "======================================"
+    echo -e "\e[34m    Ubuntu Tools Server Menu\e[0m"
+    echo -e "\e[34m    Created by Mahardian Ramadhani\e[0m"
+    echo -e "\e[33m======================================\e[0m"
+    echo -e "\e[31m0. Exit\e[0m"
+    echo -e "\e[32m1. Set Static IP Address\e[0m"
+    echo -e "\e[32m2. Allow Port\e[0m"
+    echo -e "\e[32m3. Install SSH Server\e[0m"
+    echo -e "\e[32m4. Install Apache Web Server\e[0m"
+    echo -e "\e[32m5. Install Nginx Web Server\e[0m"
+    echo -e "\e[32m6. Install MySQL Server\e[0m"
+    echo -e "\e[32m7. Install PHP\e[0m"
+    echo -e "\e[32m8. Install Docker\e[0m"
+    echo -e "\e[32m9. Install Node.js\e[0m"
+    echo -e "\e[32m10. Install Python3 and Pip\e[0m"
+    echo -e "\e[32m11. Install Git\e[0m"
+    echo -e "\e[32m12. Change Hostname\e[0m"
+    echo -e "\e[32m13. Install ODBC SQL Server 17\e[0m"
+    echo -e "\e[32m14. Install Nginx + ODBC SQL Server 17\e[0m"
+    echo -e "\e[32m15. Show Installed Tools Status\e[0m"
+    echo -e "\e[32m16. Setup Nginx Configuration\e[0m"
+    echo -e "\e[32m17. Install Composer\e[0m"
+    echo -e "\e[32m18. Setup Project Folder for Nginx\e[0m"
+    echo -e "\e[33m======================================\e[0m"
 }
 
 # Function to set static IP
@@ -80,7 +82,7 @@ network:
 EOF
 
     sudo netplan apply
-    echo "Static IP configured successfully."
+    echo -e "\e[32mStatic IP configured successfully.\e[0m"
 }
 
 # Function to allow port
@@ -92,7 +94,7 @@ allow_port() {
     read -r protocol
 
     sudo ufw allow $port/$protocol
-    echo "Port $port/$protocol allowed."
+    echo -e "\e[32mPort $port/$protocol allowed.\e[0m"
 }
 
 # Function to install SSH server
@@ -102,8 +104,8 @@ install_ssh_server() {
     sudo apt install -y openssh-server
     sudo systemctl enable ssh
     sudo systemctl start ssh
-    echo "SSH Server installed and started."
-    echo "Default SSH port is 22. Make sure to allow it in firewall if needed."
+    echo -e "\e[32mSSH Server installed and started.\e[0m"
+    echo -e "\e[33mDefault SSH port is 22. Make sure to allow it in firewall if needed.\e[0m"
 }
 
 # Function to install Apache
@@ -265,27 +267,27 @@ install_nginx_odbc() {
 
 # Function to show installed tools status
 show_status() {
-    echo "Checking status of installed tools..."
-    echo "======================================"
+    echo -e "\e[33mChecking status of installed tools...\e[0m"
+    echo -e "\e[33m======================================\e[0m"
 
     # Check services
-    echo "Service Status:"
+    echo -e "\e[36mService Status:\e[0m"
     services=("ssh" "apache2" "nginx" "mysql" "docker")
     service_names=("SSH Server" "Apache Web Server" "Nginx Web Server" "MySQL Server" "Docker")
     for i in "${!services[@]}"; do
         service="${services[$i]}"
         name="${service_names[$i]}"
         if systemctl is-active --quiet "$service" 2>/dev/null; then
-            echo "  $name: Running"
+            echo -e "  \e[32m$name: Running\e[0m"
         elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
-            echo "  $name: Installed (not running)"
+            echo -e "  \e[33m$name: Installed (not running)\e[0m"
         else
-            echo "  $name: Not installed"
+            echo -e "  \e[31m$name: Not installed\e[0m"
         fi
     done
 
     echo ""
-    echo "Package Status:"
+    echo -e "\e[36mPackage Status:\e[0m"
     packages=("openssh-server" "apache2" "nginx" "mysql-server" "php" "php7.3" "php8.3" "php8.4" "docker-ce" "nodejs" "python3" "git")
     package_names=("SSH Server" "Apache" "Nginx" "MySQL Server" "PHP (Latest)" "PHP 7.3" "PHP 8.3" "PHP 8.4" "Docker" "Node.js" "Python3" "Git")
     for i in "${!packages[@]}"; do
@@ -293,35 +295,43 @@ show_status() {
         name="${package_names[$i]}"
         if dpkg -l | grep -q "^ii.*$pkg"; then
             version=$(dpkg -l | grep "^ii.*$pkg" | head -1 | awk '{print $3}')
-            echo "  $name: Installed (v$version)"
+            echo -e "  \e[32m$name: Installed (v$version)\e[0m"
         else
-            echo "  $name: Not installed"
+            echo -e "  \e[31m$name: Not installed\e[0m"
         fi
     done
 
     # Special check for ODBC SQL Server 17
     if [ -d "/opt/microsoft/msodbcsql17" ] || apt list --installed 2>/dev/null | grep -q msodbcsql17; then
         odbc_version=$(apt list --installed 2>/dev/null | grep msodbcsql17 | awk '{print $2}' | cut -d: -f2 || echo "17.x")
-        echo "  ODBC SQL Server 17: Installed (v$odbc_version)"
+        echo -e "  \e[32mODBC SQL Server 17: Installed (v$odbc_version)\e[0m"
     else
-        echo "  ODBC SQL Server 17: Not installed"
+        echo -e "  \e[31mODBC SQL Server 17: Not installed\e[0m"
+    fi
+
+    # Check for Composer
+    if command -v composer &> /dev/null; then
+        composer_version=$(composer --version | grep -oP 'version \K[^\s]+')
+        echo -e "  \e[32mComposer: Installed (v$composer_version)\e[0m"
+    else
+        echo -e "  \e[31mComposer: Not installed\e[0m"
     fi
 
     echo ""
-    echo "Firewall Status:"
+    echo -e "\e[36mFirewall Status:\e[0m"
     if sudo ufw status | grep -q "Status: active"; then
-        echo "  UFW: Active"
+        echo -e "  \e[32mUFW: Active\e[0m"
         sudo ufw status | grep -E "^[0-9]+|^--"
     else
-        echo "  UFW: Inactive"
+        echo -e "  \e[31mUFW: Inactive\e[0m"
     fi
 
     echo ""
-    echo "Network Configuration:"
-    echo "  Current IP: $(hostname -I | awk '{print $1}')"
-    echo "  Hostname: $(hostname)"
+    echo -e "\e[36mNetwork Configuration:\e[0m"
+    echo -e "  \e[35mCurrent IP:\e[0m $(hostname -I | awk '{print $1}')"
+    echo -e "  \e[35mHostname:\e[0m $(hostname)"
 
-    echo "======================================"
+    echo -e "\e[33m======================================\e[0m"
 }
 
 # Function to setup Nginx configuration
@@ -416,13 +426,83 @@ EOF
     esac
 }
 
+# Function to install Composer
+install_composer() {
+    echo "Installing Composer..."
+    # Check if PHP is installed
+    if ! command -v php &> /dev/null; then
+        echo "PHP not found. Installing PHP Latest first..."
+        install_php
+    fi
+
+    # Download and install Composer
+    curl -sS https://getcomposer.org/installer | php
+    sudo mv composer.phar /usr/local/bin/composer
+    sudo chmod +x /usr/local/bin/composer
+    echo "Composer installed globally. Version: $(composer --version)"
+}
+
+# Function to setup project folder for Nginx
+setup_project_nginx() {
+    echo -e "\e[36mSetting up project folder for Nginx...\e[0m"
+    echo "Enter project folder path (e.g., /home/dans/smart-klaim):"
+    read -r project_path
+
+    if [ ! -d "$project_path" ]; then
+        echo -e "\e[31mFolder does not exist. Creating...\e[0m"
+        mkdir -p "$project_path"
+    fi
+
+    echo "Enter site name (e.g., smart-klaim):"
+    read -r site_name
+
+    echo "Enter server name (e.g., smart-klaim.local or _ for default):"
+    read -r server_name
+
+    # Create Nginx site configuration
+    sudo tee /etc/nginx/sites-available/$site_name > /dev/null <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+
+    root $project_path;
+    index index.php index.html index.htm;
+
+    server_name $server_name;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+    # Enable site
+    sudo ln -sf /etc/nginx/sites-available/$site_name /etc/nginx/sites-enabled/
+    sudo nginx -t && sudo systemctl reload nginx
+    echo -e "\e[32mProject folder '$project_path' configured for Nginx.\e[0m"
+    echo -e "\e[32mSite '$site_name' enabled. Access via http://$server_name\e[0m"
+}
+
 # Main menu loop
 while true; do
     display_menu
-    echo "Choose an option (1-16):"
+    echo -e "\e[36mChoose an option (0-18):\e[0m"
     read -r choice
 
     case $choice in
+        0)
+            echo -e "\e[31mExiting...\e[0m"
+            exit 0
+            ;;
         1)
             set_static_ip
             ;;
@@ -472,11 +552,13 @@ while true; do
             setup_nginx_config
             ;;
         17)
-            echo "Exiting..."
-            exit 0
+            install_composer
+            ;;
+        18)
+            setup_project_nginx
             ;;
         *)
-            echo "Invalid option. Please choose 1-17."
+            echo -e "\e[31mInvalid option. Please choose 0-18.\e[0m"
             ;;
     esac
     echo ""
