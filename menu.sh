@@ -9,15 +9,14 @@ get_system_info() {
     echo -e "\e[33m======================================\e[0m"
     echo -e "\e[33m         System Information\e[0m"
     echo -e "\e[33m======================================\e[0m"
-    echo -e "\e[36mOS:\e[0m $(lsb_release -d | cut -f2)"
-    echo -e "\e[36mKernel:\e[0m $(uname -r)"
-    echo -e "\e[36mHostname:\e[0m $(hostname)"
-    echo -e "\e[36mCPU:\e[0m $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
-    echo -e "\e[36mRAM:\e[0m $(free -h | grep Mem | awk '{print $2}')"
-    echo -e "\e[36mDisk Usage:\e[0m"
-    df -h / | tail -1 | awk '{print "  Total: " $2 ", Used: " $3 ", Free: " $4}'
-    echo -e "\e[36mUptime:\e[0m $(uptime -p)"
-    echo -e "\e[36mOpen Ports:\e[0m $(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -u | tr '\n' ',' | sed 's/,$//')"
+    printf "\e[36m%-20s %s\e[0m\n" "OS:" "$(lsb_release -d | cut -f2)"
+    printf "\e[36m%-20s %s\e[0m\n" "Kernel:" "$(uname -r)"
+    printf "\e[36m%-20s %s\e[0m\n" "Hostname:" "$(hostname)"
+    printf "\e[36m%-20s %s\e[0m\n" "CPU:" "$(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
+    printf "\e[36m%-20s %s\e[0m\n" "RAM:" "$(free -h | grep Mem | awk '{print $2}')"
+    printf "\e[36m%-20s %s\e[0m\n" "Disk Usage:" "$(df -h / | tail -1 | awk '{print "Total: " $2 ", Used: " $3 ", Free: " $4}')"
+    printf "\e[36m%-20s %s\e[0m\n" "Uptime:" "$(uptime -p)"
+    printf "\e[36m%-20s %s\e[0m\n" "Open Ports:" "$(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -u | tr '\n' ',' | sed 's/,$//')"
     echo -e "\e[33m======================================\e[0m"
 }
 
@@ -26,7 +25,6 @@ display_menu() {
     get_system_info
     echo -e "\e[34m╔══════════════════════════════════════╗\e[0m"
     echo -e "\e[34m║        Ubuntu Tools Server Menu      ║\e[0m"
-    echo -e "\e[34m║     Created by Mahardian Ramadhani   ║\e[0m"
     echo -e "\e[34m╚══════════════════════════════════════╝\e[0m"
     echo -e "\e[31m0. Exit\e[0m"
     echo ""
@@ -40,6 +38,7 @@ display_menu() {
     printf "\e[32m%-40s %s\e[0m\n" "8. Install Docker" "17. Install Composer"
     printf "\e[32m%-40s %s\e[0m\n" "9. Install Node.js" "18. Setup Project Folder for Nginx"
     echo -e "\e[33m═══════════════════════════════════════\e[0m"
+    echo -e "\e[37mCreated by Mahardian Ramadhani\e[0m"
 }
 
 # Function to set static IP
