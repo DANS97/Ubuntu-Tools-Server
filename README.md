@@ -27,6 +27,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
 - **Utilitas**:
   - Change Hostname
   - Show Installed Tools Status
+  - Setup Nginx Configuration
 
 ## Prerequisites
 
@@ -51,7 +52,7 @@ Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfig
 
 ## Penggunaan
 
-Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan (1-16):
+Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi sistem dan menu opsi. Pilih nomor opsi yang diinginkan (1-17):
 
 - Masukkan nomor opsi (1-15)
 - Ikuti instruksi interaktif
@@ -75,7 +76,10 @@ Setelah menjalankan `./menu.sh`, Anda akan melihat dashboard dengan informasi si
    - Pilih 15
    - Lihat status lengkap semua tools (services, packages, firewall, network)
 
-## Catatan
+5. **Setup Nginx Configuration**:
+   - Pilih 16
+   - Pilih tipe konfigurasi (Basic PHP-FPM atau Custom site)
+   - Konfigurasi akan dibuat di sites-available dan di-symlink ke sites-enabled
 
 - Pastikan menjalankan sebagai root atau dengan `sudo` jika diperlukan.
 - Beberapa instalasi memerlukan koneksi internet untuk menambah repository eksternal (e.g., Microsoft ODBC).
@@ -100,4 +104,4 @@ Dibuat oleh Mahardian Ramadhani. Gunakan dengan bijak.
 
 - v1.0: Menu dasar dengan instalasi tools
 - v1.1: Tambah dashboard sistem, PHP versi, ODBC, modular Nginx+ODBC
-- v1.2: Tambah fitur Show Installed Tools Status
+- v1.2: Tambah fitur Show Installed Tools Status dan Setup Nginx Configuration

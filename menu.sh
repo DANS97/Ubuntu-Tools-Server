@@ -40,7 +40,8 @@ display_menu() {
     echo "13. Install ODBC SQL Server 17"
     echo "14. Install Nginx + ODBC SQL Server 17"
     echo "15. Show Installed Tools Status"
-    echo "16. Exit"
+    echo "16. Setup Nginx Configuration"
+    echo "17. Exit"
     echo "======================================"
 }
 
@@ -123,6 +124,12 @@ install_nginx() {
     sudo systemctl enable nginx
     sudo systemctl start nginx
     echo "Nginx installed and started. Default port 80."
+
+    echo "Do you want to install ODBC SQL Server 17 as well? (y/n):"
+    read -r odbc_choice
+    if [[ $odbc_choice =~ ^[Yy]$ ]]; then
+        install_odbc_sqlserver
+    fi
 }
 
 # Function to install MySQL
@@ -279,8 +286,8 @@ show_status() {
 
     echo ""
     echo "Package Status:"
-    packages=("openssh-server" "apache2" "nginx" "mysql-server" "php" "php7.3" "php8.3" "php8.4" "docker-ce" "nodejs" "python3" "git" "msodbcsql17")
-    package_names=("SSH Server" "Apache" "Nginx" "MySQL Server" "PHP (Latest)" "PHP 7.3" "PHP 8.3" "PHP 8.4" "Docker" "Node.js" "Python3" "Git" "ODBC SQL Server 17")
+    packages=("openssh-server" "apache2" "nginx" "mysql-server" "php" "php7.3" "php8.3" "php8.4" "docker-ce" "nodejs" "python3" "git")
+    package_names=("SSH Server" "Apache" "Nginx" "MySQL Server" "PHP (Latest)" "PHP 7.3" "PHP 8.3" "PHP 8.4" "Docker" "Node.js" "Python3" "Git")
     for i in "${!packages[@]}"; do
         pkg="${packages[$i]}"
         name="${package_names[$i]}"
@@ -291,6 +298,14 @@ show_status() {
             echo "  $name: Not installed"
         fi
     done
+
+    # Special check for ODBC SQL Server 17
+    if [ -d "/opt/microsoft/msodbcsql17" ] || apt list --installed 2>/dev/null | grep -q msodbcsql17; then
+        odbc_version=$(apt list --installed 2>/dev/null | grep msodbcsql17 | awk '{print $2}' | cut -d: -f2 || echo "17.x")
+        echo "  ODBC SQL Server 17: Installed (v$odbc_version)"
+    else
+        echo "  ODBC SQL Server 17: Not installed"
+    fi
 
     echo ""
     echo "Firewall Status:"
@@ -307,6 +322,98 @@ show_status() {
     echo "  Hostname: $(hostname)"
 
     echo "======================================"
+}
+
+# Function to setup Nginx configuration
+setup_nginx_config() {
+    echo "Setting up Nginx Configuration..."
+    echo "Choose configuration type:"
+    echo "1. Basic PHP-FPM setup"
+    echo "2. Custom site configuration"
+    echo "3. Back to main menu"
+    read -r config_choice
+
+    case $config_choice in
+        1)
+            # Check if PHP is installed
+            if ! dpkg -l | grep -q "^ii.*php.*fpm"; then
+                echo "PHP-FPM not found. Installing PHP Latest..."
+                install_php
+            fi
+
+            # Create basic PHP site
+            sudo tee /etc/nginx/sites-available/default_php > /dev/null <<EOF
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/www/html;
+    index index.php index.html index.htm;
+
+    server_name _;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+            # Enable site
+            sudo ln -sf /etc/nginx/sites-available/default_php /etc/nginx/sites-enabled/
+            sudo nginx -t && sudo systemctl reload nginx
+            echo "Nginx configured with PHP-FPM. Site enabled at /etc/nginx/sites-enabled/default_php"
+            ;;
+        2)
+            echo "Enter site name (e.g., mysite):"
+            read -r site_name
+            echo "Enter document root path (e.g., /var/www/mysite):"
+            read -r doc_root
+            echo "Enter server name (e.g., example.com or _ for default):"
+            read -r server_name
+
+            # Create custom site
+            sudo tee /etc/nginx/sites-available/$site_name > /dev/null <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+
+    root $doc_root;
+    index index.html index.htm index.php;
+
+    server_name $server_name;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+    }
+}
+EOF
+
+            # Enable site
+            sudo ln -sf /etc/nginx/sites-available/$site_name /etc/nginx/sites-enabled/
+            sudo nginx -t && sudo systemctl reload nginx
+            echo "Custom site '$site_name' created and enabled."
+            ;;
+        3)
+            return
+            ;;
+        *)
+            echo "Invalid option."
+            ;;
+    esac
 }
 
 # Main menu loop
@@ -362,11 +469,14 @@ while true; do
             show_status
             ;;
         16)
+            setup_nginx_config
+            ;;
+        17)
             echo "Exiting..."
             exit 0
             ;;
         *)
-            echo "Invalid option. Please choose 1-16."
+            echo "Invalid option. Please choose 1-17."
             ;;
     esac
     echo ""
