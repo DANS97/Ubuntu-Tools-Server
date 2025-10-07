@@ -22,9 +22,10 @@ get_system_info() {
 # Function to display menu
 display_menu() {
     get_system_info
-    echo -e "\e[34m    Ubuntu Tools Server Menu\e[0m"
-    echo -e "\e[34m    Created by Mahardian Ramadhani\e[0m"
-    echo -e "\e[33m======================================\e[0m"
+    echo -e "\e[34m╔══════════════════════════════════════╗\e[0m"
+    echo -e "\e[34m║        Ubuntu Tools Server Menu      ║\e[0m"
+    echo -e "\e[34m║     Created by Mahardian Ramadhani   ║\e[0m"
+    echo -e "\e[34m╚══════════════════════════════════════╝\e[0m"
     echo -e "\e[31m0. Exit\e[0m"
     echo -e "\e[32m1. Set Static IP Address\e[0m"
     echo -e "\e[32m2. Allow Port\e[0m"
@@ -44,7 +45,7 @@ display_menu() {
     echo -e "\e[32m16. Setup Nginx Configuration\e[0m"
     echo -e "\e[32m17. Install Composer\e[0m"
     echo -e "\e[32m18. Setup Project Folder for Nginx\e[0m"
-    echo -e "\e[33m======================================\e[0m"
+    echo -e "\e[33m═══════════════════════════════════════\e[0m"
 }
 
 # Function to set static IP
@@ -487,6 +488,13 @@ EOF
 
     # Enable site
     sudo ln -sf /etc/nginx/sites-available/$site_name /etc/nginx/sites-enabled/
+
+    # Disable default site if server_name is not default
+    if [ "$server_name" != "_" ]; then
+        sudo rm -f /etc/nginx/sites-enabled/default
+        echo -e "\e[33mDefault Nginx site disabled.\e[0m"
+    fi
+
     sudo nginx -t && sudo systemctl reload nginx
     echo -e "\e[32mProject folder '$project_path' configured for Nginx.\e[0m"
     echo -e "\e[32mSite '$site_name' enabled. Access via http://$server_name\e[0m"
