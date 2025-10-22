@@ -182,7 +182,7 @@ switch_postgresql_version() {
     
     for version in 12 13 14 15 16 17; do
         if systemctl list-unit-files | grep -q "postgresql@${version}"; then
-            installed_versions+=($version)
+            installed_versions+=("$version")
             status=$(systemctl is-active postgresql@${version}-main 2>/dev/null || echo "inactive")
             echo "  - PostgreSQL $version [$status]"
         fi

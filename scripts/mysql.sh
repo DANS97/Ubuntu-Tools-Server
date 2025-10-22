@@ -28,7 +28,7 @@ setup_mysql_repo() {
         echo -e "\e[36mAdding MySQL official repository...\e[0m"
         
         # Download and install MySQL APT config
-        cd /tmp
+        cd /tmp || return 1
         wget https://dev.mysql.com/get/mysql-apt-config_0.8.29-1_all.deb
         sudo dpkg -i mysql-apt-config_0.8.29-1_all.deb
         rm mysql-apt-config_0.8.29-1_all.deb
@@ -66,11 +66,9 @@ install_mysql_version() {
     if systemctl list-unit-files | grep -q "mysql.service"; then
         sudo systemctl enable mysql
         sudo systemctl start mysql
-        service_name="mysql"
     elif systemctl list-unit-files | grep -q "mariadb.service"; then
         sudo systemctl enable mariadb
         sudo systemctl start mariadb
-        service_name="mariadb"
     fi
     
     # Show version
