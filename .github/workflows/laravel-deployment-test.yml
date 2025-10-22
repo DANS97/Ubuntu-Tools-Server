@@ -254,38 +254,38 @@ jobs:
           sudo mkdir -p /var/www/test-laravel/bootstrap/cache
           
           # Create mock index.php
-          cat <<'EOF' | sudo tee /var/www/test-laravel/public/index.php > /dev/null
-<?php
-phpinfo();
-?>
-EOF
-
+          sudo tee /var/www/test-laravel/public/index.php > /dev/null <<'PHPEOF'
+          <?php
+          phpinfo();
+          ?>
+          PHPEOF
+          
           # Create mock composer.json
-          cat <<'EOF' | sudo tee /var/www/test-laravel/composer.json > /dev/null
-{
-    "name": "test/laravel-app",
-    "type": "project",
-    "require": {
-        "php": "^8.2"
-    }
-}
-EOF
-
+          sudo tee /var/www/test-laravel/composer.json > /dev/null <<'JSONEOF'
+          {
+              "name": "test/laravel-app",
+              "type": "project",
+              "require": {
+                  "php": "^8.2"
+              }
+          }
+          JSONEOF
+          
           # Create .env.example
-          cat <<'EOF' | sudo tee /var/www/test-laravel/.env.example > /dev/null
-APP_NAME=TestLaravel
-APP_ENV=local
-APP_KEY=
-APP_DEBUG=true
-APP_URL=http://localhost
+          sudo tee /var/www/test-laravel/.env.example > /dev/null <<'ENVEOF'
+          APP_NAME=TestLaravel
+          APP_ENV=local
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
 
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=laravel_test
-DB_USERNAME=laravel
-DB_PASSWORD=password123
-EOF
+          DB_CONNECTION=mysql
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_DATABASE=laravel_test
+          DB_USERNAME=laravel
+          DB_PASSWORD=password123
+          ENVEOF
 
           echo "✓ Mock Laravel project created"
       
@@ -330,40 +330,40 @@ EOF
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
           # Create Nginx config manually (simulating the function)
-          cat <<EOF | sudo tee /etc/nginx/sites-available/test-laravel.local > /dev/null
-server {
-    listen 80;
-    server_name test-laravel.local;
-    root /var/www/test-laravel/public;
+          sudo tee /etc/nginx/sites-available/test-laravel.local > /dev/null <<'NGINXEOF'
+          server {
+              listen 80;
+              server_name test-laravel.local;
+              root /var/www/test-laravel/public;
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
+              add_header X-Frame-Options "SAMEORIGIN";
+              add_header X-Content-Type-Options "nosniff";
 
-    index index.php;
+              index index.php;
 
-    charset utf-8;
+              charset utf-8;
 
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
+              location / {
+                  try_files $uri $uri/ /index.php?$query_string;
+              }
 
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
+              location = /favicon.ico { access_log off; log_not_found off; }
+              location = /robots.txt  { access_log off; log_not_found off; }
 
-    error_page 404 /index.php;
+              error_page 404 /index.php;
 
-    location ~ \.php\$ {
-        fastcgi_pass unix:/var/run/php/php${{ matrix.php-version }}-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_hide_header X-Powered-By;
-    }
+              location ~ \.php$ {
+                  fastcgi_pass unix:/var/run/php/php${{ matrix.php-version }}-fpm.sock;
+                  fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+                  include fastcgi_params;
+                  fastcgi_hide_header X-Powered-By;
+              }
 
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-EOF
+              location ~ /\.(?!well-known).* {
+                  deny all;
+              }
+          }
+          NGINXEOF
 
           echo "✓ Nginx config created"
           
@@ -475,33 +475,33 @@ EOF
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
           # Create SSL Nginx config
-          cat <<EOF | sudo tee /etc/nginx/sites-available/test-laravel-ssl.local > /dev/null
-server {
-    listen 443 ssl http2;
-    server_name test-laravel.local;
-    root /var/www/test-laravel/public;
+          sudo tee /etc/nginx/sites-available/test-laravel-ssl.local > /dev/null <<'SSLNGINXEOF'
+          server {
+              listen 443 ssl http2;
+              server_name test-laravel.local;
+              root /var/www/test-laravel/public;
 
-    ssl_certificate /etc/nginx/ssl/test-laravel.local.crt;
-    ssl_certificate_key /etc/nginx/ssl/test-laravel.local.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+              ssl_certificate /etc/nginx/ssl/test-laravel.local.crt;
+              ssl_certificate_key /etc/nginx/ssl/test-laravel.local.key;
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_ciphers HIGH:!aNULL:!MD5;
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
+              add_header X-Frame-Options "SAMEORIGIN";
+              add_header X-Content-Type-Options "nosniff";
 
-    index index.php;
+              index index.php;
 
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
+              location / {
+                  try_files $uri $uri/ /index.php?$query_string;
+              }
 
-    location ~ \.php\$ {
-        fastcgi_pass unix:/var/run/php/php${{ matrix.php-version }}-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-EOF
+              location ~ \.php$ {
+                  fastcgi_pass unix:/var/run/php/php${{ matrix.php-version }}-fpm.sock;
+                  fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+                  include fastcgi_params;
+              }
+          }
+          SSLNGINXEOF
 
           # Enable SSL site
           sudo ln -sf /etc/nginx/sites-available/test-laravel-ssl.local /etc/nginx/sites-enabled/test-laravel-ssl.local
