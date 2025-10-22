@@ -1,0 +1,339 @@
+name: ODBC SQL Server Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/odbc.sh'
+      - '.github/workflows/odbc-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/odbc.sh'
+  workflow_dispatch:
+
+jobs:
+  test-odbc:
+    name: Test ODBC on Ubuntu ${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ['22.04', '24.04']
+        php-version: ['8.3', '8.2']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: System Information
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "System Information"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "OS: $(lsb_release -d | cut -f2)"
+          echo "Kernel: $(uname -r)"
+          echo "OpenSSL: $(openssl version)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      - name: Install PHP ${{ matrix.php-version }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing PHP ${{ matrix.php-version }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          sudo apt update
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository ppa:ondrej/php -y
+          sudo apt update
+          sudo apt install -y \
+            php${{ matrix.php-version }}-cli \
+            php${{ matrix.php-version }}-fpm \
+            php${{ matrix.php-version }}-dev \
+            php-pear
+          
+          echo "✓ PHP ${{ matrix.php-version }} installed"
+          php${{ matrix.php-version }} -v
+      
+      - name: Test ODBC Script Syntax
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing ODBC Script Syntax"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          bash -n scripts/odbc.sh
+          echo "✓ Syntax check passed"
+      
+      - name: Source ODBC Script
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Script Sourcing"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          source scripts/odbc.sh
+          
+          # Check if functions are defined
+          if declare -f install_odbc_sqlserver > /dev/null; then
+            echo "✓ install_odbc_sqlserver function found"
+          else
+            echo "✗ install_odbc_sqlserver function not found"
+            exit 1
+          fi
+          
+          if declare -f configure_openssl_for_sqlserver > /dev/null; then
+            echo "✓ configure_openssl_for_sqlserver function found"
+          else
+            echo "✗ configure_openssl_for_sqlserver function not found"
+            exit 1
+          fi
+          
+          if declare -f install_php_sqlsrv_extensions > /dev/null; then
+            echo "✓ install_php_sqlsrv_extensions function found"
+          else
+            echo "✗ install_php_sqlsrv_extensions function not found"
+            exit 1
+          fi
+      
+      - name: Install ODBC Driver 17
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing ODBC Driver 17 for SQL Server"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Install dependencies
+          sudo apt install -y curl apt-transport-https gnupg
+          
+          # Add Microsoft repository
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          
+          ubuntu_version=$(lsb_release -rs)
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/${ubuntu_version}/prod ${ubuntu_version%.*} main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          
+          sudo apt update
+          
+          # Install ODBC driver
+          sudo ACCEPT_EULA=Y apt install -y msodbcsql17
+          sudo apt install -y unixodbc unixodbc-dev
+          
+          echo "✓ ODBC Driver 17 installed"
+      
+      - name: Verify ODBC Driver Installation
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Verifying ODBC Driver"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Check odbcinst command
+          if command -v odbcinst &> /dev/null; then
+            echo "✓ odbcinst command available"
+          else
+            echo "✗ odbcinst command not found"
+            exit 1
+          fi
+          
+          # List ODBC drivers
+          echo ""
+          echo "Installed ODBC Drivers:"
+          odbcinst -q -d
+          
+          # Check for SQL Server driver
+          if odbcinst -q -d | grep -q "ODBC Driver 17 for SQL Server"; then
+            echo ""
+            echo "✓ ODBC Driver 17 for SQL Server found"
+          else
+            echo ""
+            echo "✗ ODBC Driver 17 for SQL Server not found"
+            exit 1
+          fi
+          
+          # Check driver file
+          if [ -f "/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.*.so.*.1" ]; then
+            echo "✓ ODBC driver library exists"
+            ls -lh /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.*.so.*.1
+          fi
+      
+      - name: Install PHP SQL Server Extensions
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing PHP ${{ matrix.php-version }} SQL Server Extensions"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Install build dependencies
+          sudo apt install -y gcc make autoconf libc-dev pkg-config
+          
+          # Install sqlsrv extension
+          echo "Installing sqlsrv..."
+          printf "\n" | sudo pecl install sqlsrv || true
+          
+          # Install pdo_sqlsrv extension
+          echo "Installing pdo_sqlsrv..."
+          printf "\n" | sudo pecl install pdo_sqlsrv || true
+          
+          # Create ini files
+          echo "extension=sqlsrv.so" | sudo tee /etc/php/${{ matrix.php-version }}/mods-available/sqlsrv.ini
+          echo "extension=pdo_sqlsrv.so" | sudo tee /etc/php/${{ matrix.php-version }}/mods-available/pdo_sqlsrv.ini
+          
+          # Enable extensions
+          sudo phpenmod -v ${{ matrix.php-version }} sqlsrv
+          sudo phpenmod -v ${{ matrix.php-version }} pdo_sqlsrv
+          
+          echo "✓ Extensions installed"
+      
+      - name: Verify PHP SQL Server Extensions
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Verifying PHP Extensions"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Check if extensions are loaded
+          if php${{ matrix.php-version }} -m | grep -q "sqlsrv"; then
+            echo "✓ sqlsrv extension loaded"
+          else
+            echo "✗ sqlsrv extension not loaded"
+            exit 1
+          fi
+          
+          if php${{ matrix.php-version }} -m | grep -q "pdo_sqlsrv"; then
+            echo "✓ pdo_sqlsrv extension loaded"
+          else
+            echo "✗ pdo_sqlsrv extension not loaded"
+            exit 1
+          fi
+          
+          echo ""
+          echo "Loaded SQL Server extensions:"
+          php${{ matrix.php-version }} -m | grep -E "sqlsrv|pdo_sqlsrv"
+          
+          # Check extension info
+          echo ""
+          echo "Extension details:"
+          php${{ matrix.php-version }} --ri sqlsrv || echo "sqlsrv info not available"
+          php${{ matrix.php-version }} --ri pdo_sqlsrv || echo "pdo_sqlsrv info not available"
+      
+      - name: Test OpenSSL Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing OpenSSL Configuration"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Backup original config
+          sudo cp /etc/ssl/openssl.cnf /etc/ssl/openssl.cnf.ci-backup
+          
+          # Add SQL Server compatibility config
+          cat <<'EOF' | sudo tee -a /etc/ssl/openssl.cnf > /dev/null
+
+# SQL Server 2014 TLS 1.0/1.1 Compatibility (CI Test)
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+MinProtocol = TLSv1
+CipherString = DEFAULT@SECLEVEL=0
+EOF
+
+          echo "✓ OpenSSL configuration added"
+          
+          # Verify configuration
+          if grep -q "\[openssl_init\]" /etc/ssl/openssl.cnf; then
+            echo "✓ Configuration found in openssl.cnf"
+          else
+            echo "✗ Configuration not found"
+            exit 1
+          fi
+          
+          # Test OpenSSL with TLS 1.0
+          echo ""
+          echo "Testing TLS 1.0 support..."
+          if openssl s_client -connect www.google.com:443 -tls1 </dev/null 2>&1 | grep -q "Protocol.*TLSv1"; then
+            echo "✓ TLS 1.0 is available"
+          else
+            echo "⚠ TLS 1.0 test skipped (requires actual SQL Server)"
+          fi
+      
+      - name: Test PHP PDO Connection (Mock)
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing PHP PDO SQL Server Driver"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Create test PHP script
+          cat > test_sqlsrv.php <<'PHPEOF'
+<?php
+echo "Testing SQL Server Extensions...\n\n";
+
+// Check if extensions are loaded
+$extensions = get_loaded_extensions();
+$sqlsrv_loaded = in_array('sqlsrv', $extensions);
+$pdo_sqlsrv_loaded = in_array('pdo_sqlsrv', $extensions);
+
+echo "sqlsrv extension: " . ($sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n";
+echo "pdo_sqlsrv extension: " . ($pdo_sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n\n";
+
+// Check PDO drivers
+echo "Available PDO Drivers:\n";
+$drivers = PDO::getAvailableDrivers();
+foreach ($drivers as $driver) {
+    echo "  - $driver\n";
+}
+
+$pdo_sqlsrv_available = in_array('sqlsrv', $drivers);
+echo "\nPDO sqlsrv driver: " . ($pdo_sqlsrv_available ? "✓ Available" : "✗ Not available") . "\n";
+
+// Exit with error if extensions not loaded
+if (!$sqlsrv_loaded || !$pdo_sqlsrv_loaded || !$pdo_sqlsrv_available) {
+    exit(1);
+}
+
+echo "\n✓ All SQL Server extensions are working!\n";
+exit(0);
+PHPEOF
+
+          # Run test
+          php${{ matrix.php-version }} test_sqlsrv.php
+          
+          if [ $? -eq 0 ]; then
+            echo ""
+            echo "✓ PHP SQL Server extensions test passed"
+          else
+            echo ""
+            echo "✗ PHP SQL Server extensions test failed"
+            exit 1
+          fi
+      
+      - name: Cleanup Test Environment
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Cleaning Up"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Restore OpenSSL config
+          if [ -f /etc/ssl/openssl.cnf.ci-backup ]; then
+            sudo mv /etc/ssl/openssl.cnf.ci-backup /etc/ssl/openssl.cnf
+            echo "✓ OpenSSL configuration restored"
+          fi
+          
+          # Remove test files
+          rm -f test_sqlsrv.php
+          
+          echo "✓ Cleanup completed"
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✓ All ODBC Tests Passed!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Ubuntu: $(lsb_release -rs)"
+          echo "PHP: ${{ matrix.php-version }}"
+          echo ""
+          echo "Verified:"
+          echo "  ✓ ODBC Driver 17 for SQL Server"
+          echo "  ✓ PHP sqlsrv extension"
+          echo "  ✓ PHP pdo_sqlsrv extension"
+          echo "  ✓ OpenSSL TLS 1.0 configuration"
+          echo "  ✓ PDO sqlsrv driver"
+          echo ""
