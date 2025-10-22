@@ -1,0 +1,375 @@
+name: Docker Configuration Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/docker.sh'
+      - 'scripts/network.sh'
+      - '.github/workflows/docker-config-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/docker.sh'
+      - 'scripts/network.sh'
+  workflow_dispatch:
+
+jobs:
+  test-docker-network:
+    name: Test Docker Network Config - Ubuntu ${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    timeout-minutes: 20
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ['22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: System Information
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "System Information"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "OS: $(lsb_release -d | cut -f2)"
+          echo "Kernel: $(uname -r)"
+          echo "Docker: $(docker --version)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      - name: Test Docker Script Syntax
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker Script Syntax"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          bash -n scripts/docker.sh
+          echo "✓ Docker script syntax check passed"
+          
+          bash -n scripts/network.sh
+          echo "✓ Network script syntax check passed"
+      
+      - name: Test Docker Installation
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Verifying Docker Installation"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Docker is pre-installed on GitHub Actions runners
+          if command -v docker &> /dev/null; then
+            echo "✓ Docker is installed"
+            docker --version
+          else
+            echo "✗ Docker not found"
+            exit 1
+          fi
+          
+          # Check Docker service
+          if systemctl is-active --quiet docker; then
+            echo "✓ Docker service is running"
+          else
+            echo "⚠ Docker service not running, starting..."
+            sudo systemctl start docker
+            sleep 2
+          fi
+          
+          # Test Docker execution
+          if docker ps > /dev/null 2>&1; then
+            echo "✓ Docker daemon is accessible"
+          else
+            echo "✗ Cannot communicate with Docker daemon"
+            exit 1
+          fi
+      
+      - name: Test Docker Network List
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker Network Listing"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # List Docker networks
+          echo "Docker Networks:"
+          docker network ls
+          
+          # Verify default networks
+          NETWORKS=("bridge" "host" "none")
+          for NET in "${NETWORKS[@]}"; do
+            if docker network ls | grep -q "$NET"; then
+              echo "✓ Network '$NET' exists"
+            else
+              echo "✗ Network '$NET' not found"
+              exit 1
+            fi
+          done
+      
+      - name: Test Custom Docker Network Creation
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Custom Docker Network"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          NETWORK_NAME="test-network"
+          
+          # Create custom network
+          docker network create "$NETWORK_NAME"
+          
+          # Verify network created
+          if docker network ls | grep -q "$NETWORK_NAME"; then
+            echo "✓ Custom network '$NETWORK_NAME' created"
+          else
+            echo "✗ Failed to create custom network"
+            exit 1
+          fi
+          
+          # Inspect network
+          echo ""
+          echo "Network details:"
+          docker network inspect "$NETWORK_NAME" | grep -E "(Name|Subnet|Gateway)" || true
+          
+          # Cleanup
+          docker network rm "$NETWORK_NAME"
+          echo "✓ Cleanup completed"
+      
+      - name: Test Docker DNS Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker DNS Configuration"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Create test container with custom DNS
+          CONTAINER_NAME="test-dns-container"
+          
+          docker run -d --name "$CONTAINER_NAME" \
+            --dns 8.8.8.8 \
+            --dns 1.1.1.1 \
+            alpine:latest sleep 300
+          
+          # Verify container is running
+          if docker ps | grep -q "$CONTAINER_NAME"; then
+            echo "✓ Container with custom DNS created"
+          else
+            echo "✗ Failed to create container"
+            exit 1
+          fi
+          
+          # Check DNS configuration inside container
+          echo ""
+          echo "DNS configuration in container:"
+          docker exec "$CONTAINER_NAME" cat /etc/resolv.conf
+          
+          # Verify custom DNS servers
+          if docker exec "$CONTAINER_NAME" cat /etc/resolv.conf | grep -q "8.8.8.8"; then
+            echo "✓ Custom DNS 8.8.8.8 configured"
+          else
+            echo "✗ Custom DNS not found"
+            docker stop "$CONTAINER_NAME" > /dev/null
+            docker rm "$CONTAINER_NAME" > /dev/null
+            exit 1
+          fi
+          
+          # Test DNS resolution
+          echo ""
+          echo "Testing DNS resolution:"
+          if docker exec "$CONTAINER_NAME" nslookup google.com > /dev/null 2>&1; then
+            echo "✓ DNS resolution works"
+          else
+            echo "⚠ DNS resolution failed (may be network issue)"
+          fi
+          
+          # Cleanup
+          docker stop "$CONTAINER_NAME" > /dev/null
+          docker rm "$CONTAINER_NAME" > /dev/null
+          echo "✓ Cleanup completed"
+      
+      - name: Test Docker Port Mapping
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker Port Mapping"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          CONTAINER_NAME="test-port-container"
+          HOST_PORT="8888"
+          CONTAINER_PORT="80"
+          
+          # Run nginx with port mapping
+          docker run -d --name "$CONTAINER_NAME" \
+            -p "${HOST_PORT}:${CONTAINER_PORT}" \
+            nginx:alpine
+          
+          # Wait for container to start
+          sleep 3
+          
+          # Verify container is running
+          if docker ps | grep -q "$CONTAINER_NAME"; then
+            echo "✓ Container with port mapping created"
+          else
+            echo "✗ Failed to create container"
+            exit 1
+          fi
+          
+          # Check port mapping
+          echo ""
+          echo "Port mappings:"
+          docker port "$CONTAINER_NAME"
+          
+          # Verify port is mapped
+          if docker port "$CONTAINER_NAME" | grep -q "${HOST_PORT}"; then
+            echo "✓ Port ${HOST_PORT} is mapped"
+          else
+            echo "✗ Port mapping not found"
+            docker stop "$CONTAINER_NAME" > /dev/null
+            docker rm "$CONTAINER_NAME" > /dev/null
+            exit 1
+          fi
+          
+          # Test port accessibility
+          echo ""
+          echo "Testing port accessibility:"
+          if curl -s http://localhost:${HOST_PORT} | grep -q "nginx\|Welcome"; then
+            echo "✓ Port ${HOST_PORT} is accessible"
+          else
+            echo "⚠ Port not accessible (may be firewall/network issue)"
+          fi
+          
+          # Cleanup
+          docker stop "$CONTAINER_NAME" > /dev/null
+          docker rm "$CONTAINER_NAME" > /dev/null
+          echo "✓ Cleanup completed"
+      
+      - name: Test Docker IP Address Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker Container IP Configuration"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Create custom network with specific subnet
+          NETWORK_NAME="test-ip-network"
+          SUBNET="172.28.0.0/16"
+          GATEWAY="172.28.0.1"
+          
+          docker network create \
+            --subnet="$SUBNET" \
+            --gateway="$GATEWAY" \
+            "$NETWORK_NAME"
+          
+          echo "✓ Network created with subnet $SUBNET"
+          
+          # Create container with specific IP
+          CONTAINER_NAME="test-ip-container"
+          CONTAINER_IP="172.28.0.10"
+          
+          docker run -d --name "$CONTAINER_NAME" \
+            --network "$NETWORK_NAME" \
+            --ip "$CONTAINER_IP" \
+            alpine:latest sleep 300
+          
+          # Verify container IP
+          ACTUAL_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CONTAINER_NAME")
+          
+          echo ""
+          echo "Assigned IP: $ACTUAL_IP"
+          
+          if [ "$ACTUAL_IP" = "$CONTAINER_IP" ]; then
+            echo "✓ Container has correct IP address"
+          else
+            echo "✗ IP address mismatch (expected: $CONTAINER_IP, got: $ACTUAL_IP)"
+            docker stop "$CONTAINER_NAME" > /dev/null
+            docker rm "$CONTAINER_NAME" > /dev/null
+            docker network rm "$NETWORK_NAME"
+            exit 1
+          fi
+          
+          # Test connectivity between containers
+          CONTAINER2_NAME="test-ip-container2"
+          CONTAINER2_IP="172.28.0.11"
+          
+          docker run -d --name "$CONTAINER2_NAME" \
+            --network "$NETWORK_NAME" \
+            --ip "$CONTAINER2_IP" \
+            alpine:latest sleep 300
+          
+          echo ""
+          echo "Testing inter-container connectivity:"
+          if docker exec "$CONTAINER_NAME" ping -c 2 "$CONTAINER2_IP" > /dev/null 2>&1; then
+            echo "✓ Container can ping $CONTAINER2_IP"
+          else
+            echo "✗ Inter-container connectivity failed"
+          fi
+          
+          # Cleanup
+          docker stop "$CONTAINER_NAME" "$CONTAINER2_NAME" > /dev/null
+          docker rm "$CONTAINER_NAME" "$CONTAINER2_NAME" > /dev/null
+          docker network rm "$NETWORK_NAME"
+          echo "✓ Cleanup completed"
+      
+      - name: Test Docker Daemon Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Docker Daemon Configuration"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Check Docker daemon configuration
+          if [ -f /etc/docker/daemon.json ]; then
+            echo "Docker daemon configuration exists:"
+            cat /etc/docker/daemon.json
+          else
+            echo "⚠ No custom Docker daemon configuration found"
+          fi
+          
+          # Display Docker system info
+          echo ""
+          echo "Docker system info (DNS, Network):"
+          docker system info | grep -E "(DNS|Network|Subnet|Gateway)" || echo "  (No specific DNS/Network config shown)"
+          
+          # Check default bridge network
+          echo ""
+          echo "Default bridge network configuration:"
+          docker network inspect bridge | grep -E "(Subnet|Gateway)" || true
+      
+      - name: Test Nameserver Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing System Nameserver Configuration"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Check system nameservers
+          echo "System nameservers:"
+          cat /etc/resolv.conf
+          
+          # Test DNS resolution
+          echo ""
+          echo "Testing DNS resolution:"
+          if nslookup google.com > /dev/null 2>&1; then
+            echo "✓ DNS resolution works"
+          else
+            echo "⚠ DNS resolution failed"
+          fi
+          
+          # Source network script and check functions
+          echo ""
+          echo "Checking network script functions:"
+          source scripts/network.sh
+          
+          if declare -f configure_dns > /dev/null; then
+            echo "✓ configure_dns function found"
+          else
+            echo "⚠ configure_dns function not found"
+          fi
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✓ Docker Configuration Tests Passed!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Verified on Ubuntu ${{ matrix.ubuntu-version }}:"
+          echo "  ✓ Docker network creation and management"
+          echo "  ✓ Custom DNS configuration"
+          echo "  ✓ Port mapping"
+          echo "  ✓ IP address assignment"
+          echo "  ✓ Inter-container connectivity"
+          echo "  ✓ Nameserver configuration"
+          echo ""

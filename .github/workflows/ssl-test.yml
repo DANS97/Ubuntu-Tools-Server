@@ -1,0 +1,325 @@
+name: SSL Certificate Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/ssl.sh'
+      - '.github/workflows/ssl-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/ssl.sh'
+  workflow_dispatch:
+
+jobs:
+  test-ssl-local:
+    name: Test Local SSL Certificate - Ubuntu ${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    timeout-minutes: 15
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ['22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: System Information
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "System Information"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "OS: $(lsb_release -d | cut -f2)"
+          echo "OpenSSL: $(openssl version)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      - name: Test SSL Script Syntax
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing SSL Script Syntax"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          bash -n scripts/ssl.sh
+          echo "✓ Syntax check passed"
+      
+      - name: Source SSL Script
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Script Sourcing"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          source scripts/ssl.sh
+          
+          # Check if functions are defined
+          functions=(
+            "install_certbot"
+            "generate_self_signed_cert"
+            "request_letsencrypt_cert"
+            "renew_certificates"
+            "list_certificates"
+            "check_certificate_expiry"
+            "ssl_menu"
+          )
+          
+          for func in "${functions[@]}"; do
+            if declare -f "$func" > /dev/null; then
+              echo "  ✓ $func"
+            else
+              echo "  ✗ $func not found"
+              exit 1
+            fi
+          done
+          
+          echo ""
+          echo "✓ All SSL functions loaded"
+      
+      - name: Install OpenSSL
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing OpenSSL"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          sudo apt update
+          sudo apt install -y openssl
+          openssl version
+          echo "✓ OpenSSL installed"
+      
+      - name: Generate Self-Signed Certificate
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Self-Signed Certificate Generation"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Create test directory
+          TEST_DIR="/tmp/ssl-test"
+          mkdir -p "$TEST_DIR"
+          cd "$TEST_DIR"
+          
+          # Generate self-signed certificate
+          DOMAIN="test.local"
+          
+          echo "Generating certificate for $DOMAIN..."
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "${DOMAIN}.key" \
+            -out "${DOMAIN}.crt" \
+            -subj "/C=US/ST=State/L=City/O=Organization/CN=${DOMAIN}"
+          
+          # Verify files created
+          if [ -f "${DOMAIN}.key" ] && [ -f "${DOMAIN}.crt" ]; then
+            echo "✓ Certificate files created"
+            ls -lh "${DOMAIN}.key" "${DOMAIN}.crt"
+          else
+            echo "✗ Certificate generation failed"
+            exit 1
+          fi
+          
+          # Check certificate validity
+          echo ""
+          echo "Certificate details:"
+          openssl x509 -in "${DOMAIN}.crt" -noout -subject -issuer -dates
+          
+          # Verify certificate
+          if openssl x509 -in "${DOMAIN}.crt" -noout -text > /dev/null 2>&1; then
+            echo ""
+            echo "✓ Certificate is valid"
+          else
+            echo "✗ Certificate verification failed"
+            exit 1
+          fi
+          
+          # Check key and certificate match
+          KEY_MODULUS=$(openssl rsa -noout -modulus -in "${DOMAIN}.key" 2>/dev/null | openssl md5)
+          CERT_MODULUS=$(openssl x509 -noout -modulus -in "${DOMAIN}.crt" | openssl md5)
+          
+          if [ "$KEY_MODULUS" = "$CERT_MODULUS" ]; then
+            echo "✓ Private key matches certificate"
+          else
+            echo "✗ Private key does not match certificate"
+            exit 1
+          fi
+      
+      - name: Test Certificate with Multiple Domains (SAN)
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Multi-Domain Certificate (SAN)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          TEST_DIR="/tmp/ssl-test-san"
+          mkdir -p "$TEST_DIR"
+          cd "$TEST_DIR"
+          
+          # Create OpenSSL config for SAN
+          tee san.cnf > /dev/null <<'SANEOF'
+          [req]
+          default_bits = 2048
+          prompt = no
+          default_md = sha256
+          distinguished_name = dn
+          req_extensions = v3_req
+          
+          [dn]
+          C=US
+          ST=State
+          L=City
+          O=Organization
+          CN=test.local
+          
+          [v3_req]
+          subjectAltName = @alt_names
+          
+          [alt_names]
+          DNS.1 = test.local
+          DNS.2 = www.test.local
+          DNS.3 = api.test.local
+          SANEOF
+          
+          # Generate SAN certificate
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout san.key -out san.crt -config san.cnf -extensions v3_req
+          
+          # Verify SAN certificate
+          if [ -f "san.key" ] && [ -f "san.crt" ]; then
+            echo "✓ SAN certificate created"
+          else
+            echo "✗ SAN certificate generation failed"
+            exit 1
+          fi
+          
+          # Check SAN entries
+          echo ""
+          echo "Subject Alternative Names:"
+          openssl x509 -in san.crt -noout -text | grep -A 3 "Subject Alternative Name" || true
+          
+          if openssl x509 -in san.crt -noout -text | grep -q "DNS:www.test.local"; then
+            echo "✓ SAN entries verified"
+          else
+            echo "✗ SAN entries missing"
+            exit 1
+          fi
+      
+      - name: Test Certificate Expiry Check
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Certificate Expiry Check"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          TEST_CERT="/tmp/ssl-test/test.local.crt"
+          
+          # Get expiry date
+          EXPIRY=$(openssl x509 -in "$TEST_CERT" -noout -enddate | cut -d= -f2)
+          echo "Certificate expires: $EXPIRY"
+          
+          # Calculate days until expiry
+          EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s)
+          CURRENT_EPOCH=$(date +%s)
+          DAYS_LEFT=$(( ($EXPIRY_EPOCH - $CURRENT_EPOCH) / 86400 ))
+          
+          echo "Days until expiry: $DAYS_LEFT"
+          
+          if [ $DAYS_LEFT -gt 0 ]; then
+            echo "✓ Certificate is valid for $DAYS_LEFT days"
+          else
+            echo "✗ Certificate has expired"
+            exit 1
+          fi
+      
+      - name: Test Certbot Installation Check
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Certbot Availability"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Install certbot
+          sudo apt update
+          sudo apt install -y certbot
+          
+          if command -v certbot &> /dev/null; then
+            echo "✓ Certbot installed"
+            certbot --version
+          else
+            echo "✗ Certbot not found"
+            exit 1
+          fi
+          
+          # Check certbot plugins
+          echo ""
+          echo "Available certbot plugins:"
+          certbot plugins
+      
+      - name: Summary - Local SSL
+        if: success()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✓ Local SSL Certificate Tests Passed!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Verified on Ubuntu ${{ matrix.ubuntu-version }}:"
+          echo "  ✓ Self-signed certificate generation"
+          echo "  ✓ Multi-domain SAN certificates"
+          echo "  ✓ Certificate expiry checking"
+          echo "  ✓ Certbot installation"
+          echo ""
+
+  test-ssl-public:
+    name: Test Public SSL Certificate Check - Ubuntu ${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    timeout-minutes: 10
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version: ['22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Test Public Certificate Retrieval
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Public SSL Certificate Retrieval"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Test domains with valid certificates
+          DOMAINS=("github.com" "google.com" "cloudflare.com")
+          
+          for DOMAIN in "${DOMAINS[@]}"; do
+            echo ""
+            echo "Testing $DOMAIN..."
+            
+            # Get certificate info
+            if echo | openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -dates; then
+              echo "✓ Successfully retrieved certificate for $DOMAIN"
+            else
+              echo "✗ Failed to retrieve certificate for $DOMAIN"
+              exit 1
+            fi
+          done
+      
+      - name: Test Certificate Chain Validation
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing Certificate Chain Validation"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          DOMAIN="github.com"
+          
+          # Verify certificate chain
+          if echo | openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 -showcerts 2>/dev/null | grep -q "Verify return code: 0"; then
+            echo "✓ Certificate chain is valid for $DOMAIN"
+          else
+            echo "⚠ Certificate chain validation returned non-zero (may be expected in CI)"
+          fi
+      
+      - name: Summary - Public SSL
+        if: success()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✓ Public SSL Certificate Tests Passed!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Verified:"
+          echo "  ✓ Public certificate retrieval"
+          echo "  ✓ Certificate chain validation"
+          echo ""

@@ -219,9 +219,9 @@ jobs:
           fi
           
           # Check if binary still exists (may be cached)
-          if command -v git &> /dev/null; then
-            git_path=$(which git)
-            echo "⚠ Git binary still exists at: $git_path"
+          git_check=$(command -v git 2>/dev/null || echo "")
+          if [ -n "$git_check" ]; then
+            echo "⚠ Git binary still exists at: $git_check"
             echo "  (This may be from GitHub Actions runner, not from apt)"
             echo "✓ Test considers this acceptable for CI environment"
           else
@@ -248,10 +248,11 @@ jobs:
           uninstall_composer
           
           # Verify composer is removed
-          if ! command -v composer &> /dev/null; then
+          composer_check=$(command -v composer 2>/dev/null || echo "")
+          if [ -z "$composer_check" ]; then
             echo "✓ Composer uninstalled successfully"
           else
-            echo "✗ Composer still exists"
+            echo "✗ Composer still exists at: $composer_check"
             exit 1
           fi
       
@@ -279,10 +280,11 @@ jobs:
           sudo apt autoremove -y
           
           # Verify removal
-          if ! command -v node &> /dev/null; then
+          node_check=$(command -v node 2>/dev/null || echo "")
+          if [ -z "$node_check" ]; then
             echo "✓ Node.js uninstalled successfully"
           else
-            echo "✗ Node.js still exists"
+            echo "✗ Node.js still exists at: $node_check"
             exit 1
           fi
       
