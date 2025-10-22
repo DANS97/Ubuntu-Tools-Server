@@ -196,7 +196,7 @@ setup_laravel_permissions() {
 # Function to show Laravel post-deployment instructions
 show_laravel_instructions() {
     local project_path="$1"
-    local project_user="$2"
+    # project_user parameter removed as it was unused
     
     echo ""
     echo -e "\e[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
@@ -328,7 +328,8 @@ create_nginx_laravel_config() {
     echo ""
     
     # Select PHP version
-    local php_version=$(select_php_version)
+    local php_version
+    php_version=$(select_php_version)
     
     if [ $? -ne 0 ] || [ -z "$php_version" ]; then
         echo -e "\e[31m✗ PHP selection failed. Please install PHP first (menu option 7).\e[0m"
@@ -424,7 +425,8 @@ create_apache_laravel_config() {
     echo ""
     
     # Select PHP version
-    local php_version=$(select_php_version)
+    local php_version
+    php_version=$(select_php_version)
     
     if [ $? -ne 0 ] || [ -z "$php_version" ]; then
         echo -e "\e[31m✗ PHP selection failed. Please install PHP first (menu option 7).\e[0m"
@@ -695,7 +697,7 @@ deploy_laravel_project() {
     esac
     
     # Show Laravel setup instructions
-    show_laravel_instructions "$project_path" "$project_owner"
+    show_laravel_instructions "$project_path"
     
     # Final summary
     echo ""
