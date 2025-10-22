@@ -101,8 +101,8 @@ jobs:
           # Install dependencies
           sudo apt install -y curl apt-transport-https gnupg
           
-          # Add Microsoft repository
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          # Add Microsoft repository (with batch mode for CI)
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor --batch --yes -o /usr/share/keyrings/microsoft-prod.gpg
           
           ubuntu_version=$(lsb_release -rs)
           ubuntu_codename=$(lsb_release -cs)

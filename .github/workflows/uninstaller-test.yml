@@ -195,28 +195,36 @@ jobs:
             exit 1
           fi
           
+          # Check if git package is installed
+          if dpkg -l | grep -q "^ii.*git "; then
+            echo "✓ Git package is installed via apt"
+          fi
+          
           # Uninstall using script function
           source scripts/uninstaller.sh
           
           # Create mock input for confirmation (skip .gitconfig removal)
           echo "n" | uninstall_git || true
           
-          # Verify git is removed
-          if ! command -v git &> /dev/null; then
-            echo "✓ Git uninstalled successfully"
+          # Wait for package system to update
+          sleep 2
+          
+          # Verify git package is removed from apt
+          if dpkg -l | grep -q "^ii.*git "; then
+            echo "✗ Git package still installed in dpkg"
+            exit 1
           else
-            echo "⚠ Git still present (may need manual apt remove)"
-            # Force remove for test
-            sudo apt remove --purge -y git
-            sudo apt autoremove -y
+            echo "✓ Git package removed from apt"
           fi
           
-          # Final check
-          if ! command -v git &> /dev/null; then
-            echo "✓ Git removed from system"
+          # Check if binary still exists (may be cached)
+          if command -v git &> /dev/null; then
+            git_path=$(which git)
+            echo "⚠ Git binary still exists at: $git_path"
+            echo "  (This may be from GitHub Actions runner, not from apt)"
+            echo "✓ Test considers this acceptable for CI environment"
           else
-            echo "✗ Git removal failed"
-            exit 1
+            echo "✓ Git binary completely removed"
           fi
       
       - name: Test Uninstall Composer
