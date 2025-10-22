@@ -79,6 +79,7 @@ install_node_exporter() {
     echo "Port Configuration"
     echo ""
     echo "Default Node Exporter port: 9100"
+    local use_default_port
     read -p "Use default port 9100? (y/n): " use_default_port
     
     local node_port="9100"
@@ -158,7 +159,8 @@ EOF
     echo ""
     
     # Get current server IP
-    local current_ip=$(hostname -I | awk '{print $1}')
+    local current_ip
+    current_ip=$(hostname -I | awk '{print $1}')
     echo "Current server IP: $current_ip"
     echo ""
     
@@ -253,11 +255,13 @@ change_prometheus_ip() {
     fi
     
     # Get current configuration
-    local current_ip=$(hostname -I | awk '{print $1}')
-    local current_port="9100"
-    local current_prometheus=""
+    local current_ip current_port current_prometheus
+    current_ip=$(hostname -I | awk '{print $1}')
+    current_port="9100"
+    current_prometheus=""
     
     if [ -f "$NODE_EXPORTER_CONFIG" ]; then
+        # shellcheck source=/dev/null
         source "$NODE_EXPORTER_CONFIG"
         current_port="$NODE_EXPORTER_PORT"
         current_prometheus="$PROMETHEUS_SERVER"
@@ -273,6 +277,7 @@ change_prometheus_ip() {
     fi
     echo ""
     
+    local new_prometheus_ip
     read -p "Enter new Prometheus server IP: " new_prometheus_ip
     
     if [ -z "$new_prometheus_ip" ]; then
@@ -358,6 +363,7 @@ show_node_exporter_status() {
     # Configuration
     if [ -f "$NODE_EXPORTER_CONFIG" ]; then
         echo "Configuration:"
+        # shellcheck source=/dev/null
         source "$NODE_EXPORTER_CONFIG"
         echo "  Port:            $NODE_EXPORTER_PORT"
         echo "  Client IP:       $CLIENT_IP"

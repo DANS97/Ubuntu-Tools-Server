@@ -36,7 +36,9 @@ get_system_info() {
     printf "\e[36m%-20s %s\e[0m\n" "OS:" "$(lsb_release -d | cut -f2)"
     printf "\e[36m%-20s %s\e[0m\n" "Kernel:" "$(uname -r)"
     printf "\e[36m%-20s %s\e[0m\n" "Hostname:" "$(hostname)"
-    printf "\e[36m%-20s %s\e[0m\n" "CPU:" "$(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
+    local cpu_info
+    cpu_info=$(lscpu | grep 'Model name' | cut -d: -f2 | xargs)
+    printf "\e[36m%-20s %s\e[0m\n" "CPU:" "$cpu_info"
     printf "\e[36m%-20s %s\e[0m\n" "RAM:" "$(free -h | grep Mem | awk '{print $2}')"
     printf "\e[36m%-20s %s\e[0m\n" "Disk Usage:" "$(df -h / | tail -1 | awk '{print "Total: " $2 ", Used: " $3 ", Free: " $4}')"
     printf "\e[36m%-20s %s\e[0m\n" "Uptime:" "$(uptime -p)"
@@ -97,13 +99,15 @@ display_dashboard() {
     printf "%-25s %s\n" "Uptime:" "$(uptime -p | sed 's/up //')"
     
     # Get memory info
-    local mem_total=$(free -h | grep Mem | awk '{print $2}')
-    local mem_used=$(free -h | grep Mem | awk '{print $3}')
-    local mem_percent=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100}')
+    local mem_total mem_used mem_percent
+    mem_total=$(free -h | grep Mem | awk '{print $2}')
+    mem_used=$(free -h | grep Mem | awk '{print $3}')
+    mem_percent=$(free | grep Mem | awk '{printf "%.0f", $3/$2 * 100}')
     printf "%-25s %s / %s (%s%%)\n" "Memory:" "$mem_used" "$mem_total" "$mem_percent"
     
     # Get disk info
-    local disk_usage=$(df -h / | tail -1 | awk '{print $3 " / " $2 " (" $5 ")"}')
+    local disk_usage
+    disk_usage=$(df -h / | tail -1 | awk '{print $3 " / " $2 " (" $5 ")}')
     printf "%-25s %s\n" "Disk Usage:" "$disk_usage"
     
     echo ""
@@ -224,7 +228,15 @@ display_dashboard() {
         echo -ne "\e[90m✗ Python\e[0m  "
     fi
     
-    if [ -f /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17*.so* ]; then
+    # Check ODBC using for loop
+    local odbc_found=false
+    for file in /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17*.so*; do
+        if [ -f "$file" ]; then
+            odbc_found=true
+            break
+        fi
+    done
+    if [ "$odbc_found" = true ]; then
         echo -ne "\e[32m✓\e[0m ODBC 17  "
     else
         echo -ne "\e[90m✗ ODBC 17\e[0m  "
@@ -256,7 +268,8 @@ display_dashboard() {
     printf "%-25s %s\n" "FQDN:" "$(hostname -f 2>/dev/null || echo 'Not configured')"
     
     # Open Ports
-    local open_ports=$(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -un | head -10 | tr '\n' ',' | sed 's/,$//')
+    local open_ports
+    open_ports=$(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -un | head -10 | tr '\n' ',' | sed 's/,$//')
     printf "%-25s %s\n" "Open Ports:" "$open_ports"
     
     echo ""
@@ -272,8 +285,9 @@ display_dashboard() {
     if [ -d /etc/nginx/sites-enabled ]; then
         for site in /etc/nginx/sites-enabled/*; do
             if [ -f "$site" ] && grep -q "ssl_certificate" "$site" 2>/dev/null; then
-                local domain=$(basename "$site")
-                local cert_file=$(grep "ssl_certificate " "$site" | grep -v "ssl_certificate_key" | head -1 | awk '{print $2}' | tr -d ';')
+                local domain cert_file
+                domain=$(basename "$site")
+                cert_file=$(grep "ssl_certificate " "$site" | grep -v "ssl_certificate_key" | head -1 | awk '{print $2}' | tr -d ';')
                 
                 printf "  %-30s " "$domain"
                 
@@ -286,9 +300,10 @@ display_dashboard() {
                     fi
                     
                     # Get expiry info
-                    local expiry=$(openssl x509 -in "$cert_file" -noout -enddate 2>/dev/null | cut -d= -f2)
+                    local expiry days_left
+                    expiry=$(openssl x509 -in "$cert_file" -noout -enddate 2>/dev/null | cut -d= -f2)
                     if [ -n "$expiry" ]; then
-                        local days_left=$(( ($(date -d "$expiry" +%s 2>/dev/null || echo 0) - $(date +%s)) / 86400 ))
+                        days_left=$(( ($(date -d "$expiry" +%s 2>/dev/null || echo 0) - $(date +%s)) / 86400 ))
                         
                         if [ $days_left -lt 0 ]; then
                             echo -e "\e[31m✗ Expired\e[0m"
@@ -322,7 +337,8 @@ display_dashboard() {
         local laravel_found=false
         for project in /var/www/*; do
             if [ -d "$project" ] && [ -f "$project/artisan" ]; then
-                local project_name=$(basename "$project")
+                local project_name owner
+                project_name=$(basename "$project")
                 printf "  %-30s " "$project_name"
                 
                 # Check if has .env
@@ -333,7 +349,7 @@ display_dashboard() {
                 fi
                 
                 # Check ownership
-                local owner=$(stat -c '%U' "$project")
+                owner=$(stat -c '%U' "$project")
                 echo -e "Owner: $owner"
                 
                 laravel_found=true

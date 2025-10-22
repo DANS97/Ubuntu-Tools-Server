@@ -59,7 +59,14 @@ detect_installed_apps() {
     fi
     
     # Check ODBC Driver 17
-    if [ -f /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17*.so* ]; then
+    local odbc_found=false
+    for file in /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17*.so*; do
+        if [ -f "$file" ]; then
+            odbc_found=true
+            break
+        fi
+    done
+    if [ "$odbc_found" = true ]; then
         apps+=("odbc17")
     fi
     
@@ -249,7 +256,7 @@ uninstall_postgresql() {
     sudo systemctl disable postgresql 2>/dev/null
     
     # Remove packages
-    sudo apt remove --purge -y postgresql postgresql-* 
+    sudo apt remove --purge -y postgresql postgresql-*
     sudo apt autoremove -y
     
     # Ask to remove data
@@ -473,7 +480,8 @@ uninstaller_menu() {
             done
         else
             # Split by comma
-            IFS=',' read -ra INDICES <<< "$choice"
+            local INDICES
+            IFS=',' read -r -a INDICES <<< "$choice"
             
             for idx in "${INDICES[@]}"; do
                 idx=$(echo "$idx" | xargs)  # Trim whitespace

@@ -28,7 +28,8 @@ show_ufw_status() {
     echo ""
     
     # Check if UFW is active
-    local ufw_status=$(sudo ufw status | head -1)
+    local ufw_status
+    ufw_status=$(sudo ufw status | head -1)
     if echo "$ufw_status" | grep -q "Status: active"; then
         echo -e "\e[32m● UFW is ACTIVE\e[0m"
     elif echo "$ufw_status" | grep -q "Status: inactive"; then
@@ -58,7 +59,8 @@ show_ufw_status() {
     done
     
     # Count rules
-    local rule_count=$(sudo ufw status numbered | tail -n +4 | grep -c "^\[")
+    local rule_count
+    rule_count=$(sudo ufw status numbered | tail -n +4 | grep -c "^\[")
     if [ $rule_count -eq 0 ]; then
         echo -e "\e[90m  No firewall rules configured\e[0m"
     fi

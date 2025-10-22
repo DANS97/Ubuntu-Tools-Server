@@ -9,7 +9,6 @@ generate_ssl_certificate() {
     
     # Get domain/hostname
     current_fqdn=$(hostname -f 2>/dev/null)
-    current_hostname=$(hostname)
     
     echo "Current FQDN: ${current_fqdn}"
     echo ""
@@ -187,7 +186,7 @@ configure_apache_ssl() {
     
     # Backup default SSL config
     if [ -f /etc/apache2/sites-available/default-ssl.conf ]; then
-        sudo cp /etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-available/default-ssl.conf.backup-$(date +%Y%m%d)
+        sudo cp /etc/apache2/sites-available/default-ssl.conf "/etc/apache2/sites-available/default-ssl.conf.backup-$(date +%Y%m%d)"
     fi
     
     # Create SSL virtual host
