@@ -192,9 +192,10 @@ install_odbc_sqlserver() {
     # Add Microsoft repository
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
     
-    local ubuntu_version
+    local ubuntu_version ubuntu_codename
     ubuntu_version=$(lsb_release -rs)
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/${ubuntu_version}/prod ${ubuntu_version%.*} main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+    ubuntu_codename=$(lsb_release -cs)
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/${ubuntu_version}/prod ${ubuntu_codename} main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
     
     sudo apt update
     
