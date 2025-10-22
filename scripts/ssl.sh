@@ -95,7 +95,7 @@ configure_nginx_ssl() {
     
     # Backup default config
     if [ -f /etc/nginx/sites-available/default ]; then
-        sudo cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.backup-$(date +%Y%m%d)
+        sudo cp /etc/nginx/sites-available/default "/etc/nginx/sites-available/default.backup-$(date +%Y%m%d)"
     fi
     
     # Create SSL configuration

@@ -67,8 +67,9 @@ get_ssl_info() {
     local cert_file=$2
     
     if [ -f "$cert_file" ]; then
-        local expiry=$(openssl x509 -in "$cert_file" -noout -enddate 2>/dev/null | cut -d= -f2)
-        local days_left=$(( ($(date -d "$expiry" +%s) - $(date +%s)) / 86400 ))
+        local expiry days_left
+        expiry=$(openssl x509 -in "$cert_file" -noout -enddate 2>/dev/null | cut -d= -f2)
+        days_left=$(( ($(date -d "$expiry" +%s) - $(date +%s)) / 86400 ))
         
         if [ $days_left -lt 0 ]; then
             echo -e "\e[31m✗ Expired\e[0m"
@@ -256,7 +257,8 @@ display_dashboard() {
     echo -e "─────────────────────────────────────────────────────────────────────"
     
     # DNS Servers
-    local dns_servers=$(grep "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}' | tr '\n' ', ' | sed 's/,$//')
+    local dns_servers
+    dns_servers=$(grep "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}' | tr '\n' ', ' | sed 's/,$//')
     if [ -n "$dns_servers" ]; then
         printf "%-25s %s\n" "DNS Servers:" "$dns_servers"
     else

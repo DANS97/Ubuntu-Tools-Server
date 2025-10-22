@@ -86,7 +86,8 @@ display_installed_apps() {
     echo -e "\e[36m╚════════════════════════════════════════════════════════════════════╝\e[0m"
     echo ""
     
-    local apps=($(detect_installed_apps))
+    local apps
+    IFS=' ' read -r -a apps <<< "$(detect_installed_apps)"
     
     if [ ${#apps[@]} -eq 0 ]; then
         echo -e "\e[33m⚠ No applications detected or all core applications are system packages.\e[0m"
@@ -246,7 +247,8 @@ uninstall_postgresql() {
     fi
     
     # Detect versions
-    local versions=$(ls /etc/postgresql/ 2>/dev/null)
+    local versions
+    versions=$(ls /etc/postgresql/ 2>/dev/null)
     
     # Stop services
     for version in $versions; do
@@ -465,7 +467,8 @@ uninstaller_menu() {
             return
         fi
         
-        local apps=($(detect_installed_apps))
+        local apps
+        IFS=' ' read -r -a apps <<< "$(detect_installed_apps)"
         
         if [ "$choice" = "all" ]; then
             echo -e "\e[31m⚠ WARNING: This will uninstall ALL detected applications!\e[0m"

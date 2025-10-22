@@ -373,7 +373,8 @@ show_node_exporter_status() {
     fi
     
     # Port check
-    local port=$(sudo netstat -tlnp 2>/dev/null | grep node_exporter | awk '{print $4}' | cut -d: -f2)
+    local port
+    port=$(sudo netstat -tlnp 2>/dev/null | grep node_exporter | awk '{print $4}' | cut -d: -f2)
     if [ -n "$port" ]; then
         echo "Listening on port: $port"
     fi
