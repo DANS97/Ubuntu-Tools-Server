@@ -245,7 +245,17 @@ jobs:
           
           # Uninstall using script function
           source scripts/uninstaller.sh
-          uninstall_composer
+          uninstall_composer || true
+          
+          # Force remove if still exists (for CI cleanup)
+          if [ -f /usr/local/bin/composer ]; then
+            echo "⚠ Composer still exists, forcing removal..."
+            sudo rm -f /usr/local/bin/composer
+          fi
+          
+          if [ -f /usr/bin/composer ]; then
+            sudo rm -f /usr/bin/composer
+          fi
           
           # Verify composer is removed
           composer_check=$(command -v composer 2>/dev/null || echo "")
