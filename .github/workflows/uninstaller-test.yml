@@ -210,8 +210,9 @@ jobs:
           sleep 2
           
           # Verify git package is removed from apt
-          if dpkg -l | grep -q "^ii.*git "; then
+          if dpkg -l 2>/dev/null | grep -E "^ii\s+git\s+" > /dev/null; then
             echo "✗ Git package still installed in dpkg"
+            dpkg -l | grep -E "^ii.*git"
             exit 1
           else
             echo "✓ Git package removed from apt"
