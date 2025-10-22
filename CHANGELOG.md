@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2025-10-22
 
 ### Added
+- **CI/CD Pipeline with GitHub Actions**
+  - ShellCheck validation on every push
+  - Bash syntax checking for all scripts
+  - Ubuntu 22.04 & 24.04 compatibility testing
+  - Weekly scheduled compatibility tests
+  - Automated release creation from tags
+  - Auto-update version badges
 - **PostgreSQL support** (versions 12-17) with official repository integration
 - **PHP multi-version installer** - Install any version from 7.3 to 8.4
 - **Node.js multi-version support** - Versions 18, 20, 22, 23 + NVM integration
@@ -18,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension selection during PHP installation (15+ extensions)
 - Remote access setup for MySQL and PostgreSQL
 - NVM (Node Version Manager) installation option
+- `.gitignore` file for development tools
+- `LICENSE` file (MIT License)
 
 ### Changed
 - `scripts/php.sh` - Complete rewrite with interactive sub-menu (9 options)

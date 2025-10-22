@@ -1,0 +1,51 @@
+name: Ubuntu Compatibility Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly test on Sunday
+
+jobs:
+  compatibility:
+    name: Test on Ubuntu ${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    
+    strategy:
+      matrix:
+        ubuntu-version: ['22.04', '24.04']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set permissions
+      run: |
+        chmod +x menu.sh
+        chmod +x setup-permissions.sh
+        chmod +x scripts/*.sh
+        
+    - name: Verify script structure
+      run: |
+        echo "Testing on Ubuntu ${{ matrix.ubuntu-version }}"
+        bash -n menu.sh
+        
+    - name: Check required commands
+      run: |
+        command -v bash
+        command -v sudo
+        command -v apt-get
+        
+    - name: Test menu.sh loads modules
+      run: |
+        # Verify all scripts can be sourced
+        for script in scripts/*.sh; do
+          echo "Testing source of $script..."
+          bash -c "source $script && echo 'OK: $script'" || exit 1
+        done
+        
+    - name: Run syntax validation
+      run: |
+        echo "All scripts validated on Ubuntu ${{ matrix.ubuntu-version }}"

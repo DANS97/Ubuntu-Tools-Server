@@ -148,9 +148,39 @@ Sebelum commit, test script Anda:
    bash -n scripts/your-script.sh
    ```
 
-2. **Dry Run**: Jalankan di environment test terlebih dahulu
+2. **ShellCheck** (Automated in CI/CD):
+   ```bash
+   shellcheck menu.sh
+   shellcheck scripts/*.sh
+   ```
 
-3. **Verification**: Pastikan fungsi dapat dipanggil dengan benar dari menu
+3. **Dry Run**: Jalankan di environment test terlebih dahulu
+
+4. **Verification**: Pastikan fungsi dapat dipanggil dengan benar dari menu
+
+## CI/CD Pipeline
+
+Setiap push/PR otomatis menjalankan:
+
+✅ **Quality Checks** (`.github/workflows/test.yml`):
+- ShellCheck validation
+- Bash syntax checking untuk semua scripts
+
+✅ **Compatibility Tests** (`.github/workflows/compatibility.yml`):
+- Test di Ubuntu 22.04
+- Test di Ubuntu 24.04
+- Weekly scheduled tests
+
+✅ **Release Automation** (`.github/workflows/release.yml`):
+- Trigger saat push tag `v*.*.*`
+- Auto-create GitHub release
+- Generate release archive
+
+✅ **Version Badge Update** (`.github/workflows/update-badge.yml`):
+- Auto-update version badge di README
+- Trigger saat release tag
+
+**Note**: Semua PR harus pass CI checks sebelum merge.
 
 ## Kompatibilitas
 
