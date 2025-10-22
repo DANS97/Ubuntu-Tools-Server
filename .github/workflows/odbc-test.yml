@@ -218,19 +218,19 @@ jobs:
           sudo cp /etc/ssl/openssl.cnf /etc/ssl/openssl.cnf.ci-backup
           
           # Add SQL Server compatibility config
-          cat <<'EOF' | sudo tee -a /etc/ssl/openssl.cnf > /dev/null
+          sudo tee -a /etc/ssl/openssl.cnf > /dev/null <<'OPENSSLEOF'
+          
+          # SQL Server 2014 TLS 1.0/1.1 Compatibility (CI Test)
+          [openssl_init]
+          ssl_conf = ssl_sect
 
-# SQL Server 2014 TLS 1.0/1.1 Compatibility (CI Test)
-[openssl_init]
-ssl_conf = ssl_sect
+          [ssl_sect]
+          system_default = system_default_sect
 
-[ssl_sect]
-system_default = system_default_sect
-
-[system_default_sect]
-MinProtocol = TLSv1
-CipherString = DEFAULT@SECLEVEL=0
-EOF
+          [system_default_sect]
+          MinProtocol = TLSv1
+          CipherString = DEFAULT@SECLEVEL=0
+          OPENSSLEOF
 
           echo "✓ OpenSSL configuration added"
           
@@ -258,36 +258,36 @@ EOF
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
           # Create test PHP script
-          cat > test_sqlsrv.php <<'PHPEOF'
-<?php
-echo "Testing SQL Server Extensions...\n\n";
+          tee test_sqlsrv.php > /dev/null <<'PHPEOF'
+          <?php
+          echo "Testing SQL Server Extensions...\n\n";
 
-// Check if extensions are loaded
-$extensions = get_loaded_extensions();
-$sqlsrv_loaded = in_array('sqlsrv', $extensions);
-$pdo_sqlsrv_loaded = in_array('pdo_sqlsrv', $extensions);
+          // Check if extensions are loaded
+          $extensions = get_loaded_extensions();
+          $sqlsrv_loaded = in_array('sqlsrv', $extensions);
+          $pdo_sqlsrv_loaded = in_array('pdo_sqlsrv', $extensions);
 
-echo "sqlsrv extension: " . ($sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n";
-echo "pdo_sqlsrv extension: " . ($pdo_sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n\n";
+          echo "sqlsrv extension: " . ($sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n";
+          echo "pdo_sqlsrv extension: " . ($pdo_sqlsrv_loaded ? "✓ Loaded" : "✗ Not loaded") . "\n\n";
 
-// Check PDO drivers
-echo "Available PDO Drivers:\n";
-$drivers = PDO::getAvailableDrivers();
-foreach ($drivers as $driver) {
-    echo "  - $driver\n";
-}
+          // Check PDO drivers
+          echo "Available PDO Drivers:\n";
+          $drivers = PDO::getAvailableDrivers();
+          foreach ($drivers as $driver) {
+              echo "  - $driver\n";
+          }
 
-$pdo_sqlsrv_available = in_array('sqlsrv', $drivers);
-echo "\nPDO sqlsrv driver: " . ($pdo_sqlsrv_available ? "✓ Available" : "✗ Not available") . "\n";
+          $pdo_sqlsrv_available = in_array('sqlsrv', $drivers);
+          echo "\nPDO sqlsrv driver: " . ($pdo_sqlsrv_available ? "✓ Available" : "✗ Not available") . "\n";
 
-// Exit with error if extensions not loaded
-if (!$sqlsrv_loaded || !$pdo_sqlsrv_loaded || !$pdo_sqlsrv_available) {
-    exit(1);
-}
+          // Exit with error if extensions not loaded
+          if (!$sqlsrv_loaded || !$pdo_sqlsrv_loaded || !$pdo_sqlsrv_available) {
+              exit(1);
+          }
 
-echo "\n✓ All SQL Server extensions are working!\n";
-exit(0);
-PHPEOF
+          echo "\n✓ All SQL Server extensions are working!\n";
+          exit(0);
+          PHPEOF
 
           # Run test
           php${{ matrix.php-version }} test_sqlsrv.php
