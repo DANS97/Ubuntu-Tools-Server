@@ -1,4 +1,4 @@
-# Ubuntu Tools Server Menu# Ubuntu Tools Server Menu# Ubuntu Tools Server Menu
+# Ubuntu Tools Server Menu# Ubuntu Tools Server Menu# Ubuntu Tools Server Menu# Ubuntu Tools Server Menu
 
 
 
@@ -6,7 +6,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![Version](https://img.shields.io/badge/Version-2.1-green.svg)](CHANGELOG.md)[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange?logo=ubuntu)](https://ubuntu.com)Menu interaktif untuk mengelola server Ubuntu dengan mudah. Dibuat oleh Mahardian Ramadhani.
+[![Version](https://img.shields.io/badge/Version-2.1-green.svg)](CHANGELOG.md)[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange?logo=ubuntu)](https://ubuntu.com)
 
 [![ShellCheck](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/test.yml/badge.svg)](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/test.yml)
 
@@ -14,55 +14,120 @@
 
 
 
-Automated server management tool untuk Ubuntu dengan support multi-version installation dari repository resmi.[![Version](https://img.shields.io/badge/Version-2.1-green.svg)](CHANGELOG.md)## Deskripsi
+Interactive menu untuk instalasi dan konfigurasi server Ubuntu dengan support multi-version.[![Version](https://img.shields.io/badge/Version-2.1-green.svg)](CHANGELOG.md)[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange?logo=ubuntu)](https://ubuntu.com)Menu interaktif untuk mengelola server Ubuntu dengan mudah. Dibuat oleh Mahardian Ramadhani.
 
 
+
+## Features[![ShellCheck](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/test.yml/badge.svg)](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/test.yml)
+
+
+
+- 🔄 Multi-version: PHP (7.3-8.4), PostgreSQL (12-17), Node.js (18-23)[![Compatibility](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/compatibility.yml/badge.svg)](https://github.com/DANS97/Ubuntu-Tools-Server/actions/workflows/compatibility.yml)[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+- ⚡ Official repositories integration
+
+- 🔀 Easy version switching
+
+- 🛠️ Interactive configuration wizards
+
+- 📊 Real-time system dashboardAutomated server management tool untuk Ubuntu dengan support multi-version installation dari repository resmi.[![Version](https://img.shields.io/badge/Version-2.1-green.svg)](CHANGELOG.md)## Deskripsi
+
+- ✅ CI/CD ready with GitHub Actions
+
+
+
+## Quick Start
 
 ## Features
 
+```bash
 
+git clone https://github.com/DANS97/Ubuntu-Tools-Server.git
 
-**Core Capabilities:**Automated server management tool untuk Ubuntu dengan support multi-version installation dari repository resmi.Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfigurasi dan instalasi pada server Ubuntu 22.04 dan 24.04. Menu menampilkan spesifikasi server dan opsi untuk setting IP, allow port, install berbagai tools seperti SSH, Apache, Nginx, MySQL, PHP, Docker, dll.
+cd Ubuntu-Tools-Server
 
-- Multi-version support: PHP (7.3-8.4), PostgreSQL (12-17), Node.js (18-23)
+chmod +x setup-permissions.sh && ./setup-permissions.sh**Core Capabilities:**Automated server management tool untuk Ubuntu dengan support multi-version installation dari repository resmi.Skrip bash ini menyediakan menu interaktif untuk melakukan berbagai tugas konfigurasi dan instalasi pada server Ubuntu 22.04 dan 24.04. Menu menampilkan spesifikasi server dan opsi untuk setting IP, allow port, install berbagai tools seperti SSH, Apache, Nginx, MySQL, PHP, Docker, dll.
 
-- Official repositories integration
+./menu.sh
 
-- Easy version switching
-
-- Interactive configuration wizards## Features## Fitur
-
-- Real-time system dashboard
-
-- **CI/CD ready** with GitHub Actions
+```- Multi-version support: PHP (7.3-8.4), PostgreSQL (12-17), Node.js (18-23)
 
 
 
-**Available Tools:****Core Capabilities:**- **Dashboard Sistem**: Menampilkan informasi spesifikasi server (OS, Kernel, Hostname, CPU, RAM, Disk Usage)
+## Available Tools- Official repositories integration
 
 
+
+| Web Servers | Databases | Languages | DevOps |- Easy version switching
+
+|------------|-----------|-----------|---------|
+
+| Apache | MySQL/MariaDB | PHP 7.3-8.4 | Docker |- Interactive configuration wizards## Features## Fitur
+
+| Nginx | PostgreSQL 12-17 | Python3 | Git |
+
+| | | Node.js + NVM | Composer |- Real-time system dashboard
+
+
+
+**+ Network tools:** Static IP, UFW Firewall, SSH, ODBC- **CI/CD ready** with GitHub Actions
+
+
+
+## Usage Examples
+
+
+
+**LEMP Stack:****Available Tools:****Core Capabilities:**- **Dashboard Sistem**: Menampilkan informasi spesifikasi server (OS, Kernel, Hostname, CPU, RAM, Disk Usage)
+
+```bash
+
+./menu.sh -> 5 (Nginx) -> 6 (MySQL) -> 7 (PHP) -> 16 (Status)
+
+```
 
 | Category | Tools |- Multi-version support: PHP (7.3-8.4), PostgreSQL (12-17), Node.js (18-23)- **Konfigurasi Jaringan**:
 
-|----------|-------|
+**Multiple PHP Versions:**
 
-| Web Servers | Apache, Nginx + config wizard |- Official repositories integration  - Set Static IP Address
+```bash|----------|-------|
 
-| Databases | MySQL/MariaDB, PostgreSQL (12-17) |
+./menu.sh -> 7 -> 2 (Install 8.1) -> 2 (Install 8.3) -> 8 (Switch)
 
-| Languages | PHP (7.3-8.4), Python3, Node.js + NVM |- Easy version switching  - Allow Port (menggunakan ufw)
-
-| DevOps | Docker + Compose, Git, Composer |
-
-| Network | Static IP, UFW, SSH, ODBC |- Interactive configuration wizards- **Instalasi Tools**:
+```| Web Servers | Apache, Nginx + config wizard |- Official repositories integration  - Set Static IP Address
 
 
 
-## Quick Start- Real-time system dashboard  - SSH Server
+## Documentation| Databases | MySQL/MariaDB, PostgreSQL (12-17) |
 
 
 
-```bash  - Apache Web Server
+- [QUICKSTART.md](QUICKSTART.md) - Complete menu reference| Languages | PHP (7.3-8.4), Python3, Node.js + NVM |- Easy version switching  - Allow Port (menggunakan ufw)
+
+- [CHANGELOG.md](CHANGELOG.md) - Version history
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development guide| DevOps | Docker + Compose, Git, Composer |
+
+
+
+## Requirements| Network | Static IP, UFW, SSH, ODBC |- Interactive configuration wizards- **Instalasi Tools**:
+
+
+
+- Ubuntu 22.04 or 24.04
+
+- Root or sudo access
+
+- Internet connection## Quick Start- Real-time system dashboard  - SSH Server
+
+
+
+## License
+
+
+
+MIT © 2025 [Mahardian Ramadhani](https://github.com/DANS97)```bash  - Apache Web Server
+
 
 # Clone
 
