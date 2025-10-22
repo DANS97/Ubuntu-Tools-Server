@@ -160,23 +160,69 @@ jobs:
           # Install build dependencies
           sudo apt install -y gcc make autoconf libc-dev pkg-config
           
+          # Set PHP version for PECL
+          sudo update-alternatives --set php /usr/bin/php${{ matrix.php-version }}
+          sudo update-alternatives --set phpize /usr/bin/phpize${{ matrix.php-version }}
+          sudo update-alternatives --set php-config /usr/bin/php-config${{ matrix.php-version }}
+          
+          # Verify PHP version
+          echo "Using PHP version:"
+          php -v | head -1
+          
           # Install sqlsrv extension
-          echo "Installing sqlsrv..."
-          printf "\n" | sudo pecl install sqlsrv || true
+          echo ""
+          echo "Installing sqlsrv extension..."
+          printf "\n" | sudo pecl install sqlsrv
+          
+          if [ $? -eq 0 ]; then
+            echo "✓ sqlsrv compiled successfully"
+          else
+            echo "⚠ sqlsrv install had warnings (may still work)"
+          fi
           
           # Install pdo_sqlsrv extension
-          echo "Installing pdo_sqlsrv..."
-          printf "\n" | sudo pecl install pdo_sqlsrv || true
+          echo ""
+          echo "Installing pdo_sqlsrv extension..."
+          printf "\n" | sudo pecl install pdo_sqlsrv
+          
+          if [ $? -eq 0 ]; then
+            echo "✓ pdo_sqlsrv compiled successfully"
+          else
+            echo "⚠ pdo_sqlsrv install had warnings (may still work)"
+          fi
+          
+          # Find the compiled .so files
+          echo ""
+          echo "Locating compiled extensions..."
+          
+          sqlsrv_so=$(find /usr/lib/php -name "sqlsrv.so" 2>/dev/null | head -1)
+          pdo_sqlsrv_so=$(find /usr/lib/php -name "pdo_sqlsrv.so" 2>/dev/null | head -1)
+          
+          if [ -n "$sqlsrv_so" ]; then
+            echo "✓ Found sqlsrv.so: $sqlsrv_so"
+            ls -lh "$sqlsrv_so"
+          else
+            echo "✗ sqlsrv.so not found"
+          fi
+          
+          if [ -n "$pdo_sqlsrv_so" ]; then
+            echo "✓ Found pdo_sqlsrv.so: $pdo_sqlsrv_so"
+            ls -lh "$pdo_sqlsrv_so"
+          else
+            echo "✗ pdo_sqlsrv.so not found"
+          fi
           
           # Create ini files
+          echo ""
+          echo "Creating extension configuration..."
           echo "extension=sqlsrv.so" | sudo tee /etc/php/${{ matrix.php-version }}/mods-available/sqlsrv.ini
           echo "extension=pdo_sqlsrv.so" | sudo tee /etc/php/${{ matrix.php-version }}/mods-available/pdo_sqlsrv.ini
           
-          # Enable extensions
+          # Enable extensions for all SAPIs
           sudo phpenmod -v ${{ matrix.php-version }} sqlsrv
           sudo phpenmod -v ${{ matrix.php-version }} pdo_sqlsrv
           
-          echo "✓ Extensions installed"
+          echo "✓ Extensions configuration completed"
       
       - name: Verify PHP SQL Server Extensions
         run: |

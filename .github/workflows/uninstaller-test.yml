@@ -110,17 +110,41 @@ jobs:
           echo "Installing Test Applications"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
-          # Install Git (lightweight, quick to test)
+          # Update package list
           sudo apt update
+          
+          # Install Git
+          echo "Installing Git..."
           sudo apt install -y git
+          if command -v git &> /dev/null; then
+            echo "✓ Git installed: $(git --version)"
+          else
+            echo "✗ Git installation failed"
+            exit 1
+          fi
           
           # Install Composer
+          echo "Installing Composer..."
           curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+          if command -v composer &> /dev/null; then
+            echo "✓ Composer installed: $(composer --version | head -1)"
+          else
+            echo "✗ Composer installation failed"
+            exit 1
+          fi
           
-          # Install Node.js from apt (quick install)
+          # Install Node.js
+          echo "Installing Node.js..."
           sudo apt install -y nodejs npm
+          if command -v node &> /dev/null; then
+            echo "✓ Node.js installed: $(node --version)"
+          else
+            echo "✗ Node.js installation failed"
+            exit 1
+          fi
           
-          echo "✓ Test applications installed"
+          echo ""
+          echo "✓ All test applications installed successfully"
       
       - name: Test Detect Installed Apps (With Apps)
         run: |

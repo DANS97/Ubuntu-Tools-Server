@@ -431,12 +431,20 @@ jobs:
             exit 1
           fi
           
-          # MySQL is pre-installed on GitHub runners, just verify
+          # MySQL is pre-installed on GitHub runners, start it if needed
+          if ! systemctl is-active --quiet mysql; then
+            echo "Starting MySQL service..."
+            sudo systemctl start mysql
+            sleep 3
+          fi
+          
+          # Verify service
           if systemctl is-active --quiet mysql; then
             echo "✓ MySQL service is running"
             mysql --version
           else
             echo "✗ MySQL service not running"
+            systemctl status mysql --no-pager || true
             exit 1
           fi
           
