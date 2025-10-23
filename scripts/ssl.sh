@@ -354,41 +354,110 @@ EOF
         echo -e "\e[31m✗ Port 443 is NOT listening\e[0m"
         echo ""
         echo "Debugging information:"
-        echo "1. Nginx status:"
-        sudo systemctl status nginx --no-pager -l
+        echo "─────────────────────────────────────────────────────────────"
+        echo "1. Nginx configuration test:"
+        if sudo nginx -t 2>&1 | tee /tmp/nginx-ssl-test.log; then
+            echo -e "\e[32m✓ Configuration syntax is OK\e[0m"
+        else
+            echo -e "\e[31m✗ Configuration has errors!\e[0m"
+            cat /tmp/nginx-ssl-test.log
+        fi
         echo ""
-        echo "2. Recent Nginx errors:"
-        sudo tail -20 /var/log/nginx/error.log 2>/dev/null || echo "No error log found"
+        echo "2. Nginx error log (last 10 lines):"
+        sudo tail -10 /var/log/nginx/error.log 2>/dev/null || echo "No error log found"
         echo ""
-        echo "3. All listening ports:"
-        sudo ss -tuln | grep LISTEN
+        echo "3. Current Nginx configuration for SSL:"
+        if [ -f /etc/nginx/sites-enabled/default ]; then
+            echo "   Checking /etc/nginx/sites-enabled/default for SSL config..."
+            if grep -q "listen.*443.*ssl" /etc/nginx/sites-enabled/default; then
+                echo -e "   \e[32m✓ SSL configuration found\e[0m"
+                grep -A 2 "listen.*443" /etc/nginx/sites-enabled/default | head -5
+            else
+                echo -e "   \e[31m✗ No SSL (443) configuration found!\e[0m"
+                echo ""
+                echo -e "\e[33m⚠ PROBLEM IDENTIFIED:\e[0m"
+                echo "   Nginx configuration does not have 'listen 443 ssl' directive."
+                echo "   The SSL configuration may not have been applied properly."
+            fi
+        fi
         echo ""
-        echo "4. Nginx configuration test:"
-        sudo nginx -t
+        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+        echo -e "\e[33m⚠ Troubleshooting Options:\e[0m"
+        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
         echo ""
-        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-        echo -e "\e[33m⚠ Troubleshooting Steps:\e[0m"
-        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-        echo ""
-        echo "Run these commands to diagnose:"
-        echo "  1. Check Nginx is running:"
-        echo "     sudo systemctl status nginx"
-        echo ""
-        echo "  2. Check all ports:"
-        echo "     sudo ss -tuln | grep LISTEN"
-        echo ""
-        echo "  3. Check Nginx error log:"
-        echo "     sudo tail -50 /var/log/nginx/error.log"
-        echo ""
-        echo "  4. Restart Nginx manually:"
-        echo "     sudo systemctl restart nginx"
-        echo "     sudo ss -tuln | grep :443"
-        echo ""
-        echo "  5. Check if Apache is using port 443:"
-        echo "     sudo systemctl stop apache2"
-        echo "     sudo systemctl restart nginx"
-        echo ""
-        return 1
+        
+        while true; do
+            echo "What would you like to do?"
+            echo "  1. View full Nginx configuration"
+            echo "  2. Reload Nginx service"
+            echo "  3. Check if SSL config file exists"
+            echo "  4. View Nginx error log (full)"
+            echo "  5. Reconfigure SSL (try again)"
+            echo "  0. Continue (skip troubleshooting)"
+            echo ""
+            read -p "Choose option: " troubleshoot_choice
+            
+            case $troubleshoot_choice in
+                1)
+                    echo ""
+                    echo "=== Current Nginx Default Config ==="
+                    sudo cat /etc/nginx/sites-enabled/default 2>/dev/null || echo "Config file not found"
+                    echo ""
+                    ;;
+                2)
+                    echo ""
+                    echo "Reloading Nginx..."
+                    sudo systemctl reload nginx
+                    sleep 2
+                    if sudo ss -tuln | grep -q ":443 "; then
+                        echo -e "\e[32m✓ Success! Port 443 is now listening\e[0m"
+                        sudo ss -tuln | grep ":443"
+                        return 0
+                    else
+                        echo -e "\e[31m✗ Still not listening on port 443\e[0m"
+                    fi
+                    echo ""
+                    ;;
+                3)
+                    echo ""
+                    echo "Checking SSL configuration..."
+                    echo ""
+                    if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
+                        echo -e "\e[32m✓ Certificate files exist:\e[0m"
+                        echo "   Cert: $cert_file"
+                        echo "   Key:  $key_file"
+                        ls -lh "$cert_file" "$key_file"
+                    else
+                        echo -e "\e[31m✗ Certificate files missing!\e[0m"
+                        echo "   Cert: $cert_file"
+                        echo "   Key:  $key_file"
+                    fi
+                    echo ""
+                    ;;
+                4)
+                    echo ""
+                    echo "=== Nginx Error Log (last 50 lines) ==="
+                    sudo tail -50 /var/log/nginx/error.log 2>/dev/null || echo "No error log found"
+                    echo ""
+                    ;;
+                5)
+                    echo ""
+                    echo -e "\e[33mReconfiguring SSL...\e[0m"
+                    # Try to configure again
+                    configure_nginx_ssl "$domain" "$key_file" "$cert_file"
+                    return $?
+                    ;;
+                0)
+                    echo ""
+                    echo -e "\e[33mSkipping troubleshooting.\e[0m"
+                    return 1
+                    ;;
+                *)
+                    echo -e "\e[31mInvalid option. Please choose 0-5.\e[0m"
+                    echo ""
+                    ;;
+            esac
+        done
     fi
 }
 
