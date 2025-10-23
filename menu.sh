@@ -185,11 +185,15 @@ display_dashboard() {
     
     # UFW Firewall Status
     if command -v ufw &> /dev/null; then
+        local ufw_status
+        ufw_status=$(timeout 1 sudo -n ufw status 2>/dev/null | grep -i "Status:" | awk '{print $2}' || echo "unknown")
         printf "  "
-        if sudo ufw status 2>/dev/null | grep -q "Status: active"; then
-            echo -ne "\e[32m● UFW Firewall        [Active]\e[0m\n"
+        if [ "$ufw_status" = "active" ]; then
+            echo -e "\e[32m● UFW Firewall        [Active]\e[0m"
+        elif [ "$ufw_status" = "inactive" ]; then
+            echo -e "\e[33m○ UFW Firewall        [Inactive]\e[0m"
         else
-            echo -ne "\e[33m○ UFW Firewall        [Inactive]\e[0m\n"
+            echo -e "\e[90m○ UFW Firewall        [Status unknown]\e[0m"
         fi
     else
         printf "  \e[90m○ UFW Firewall        [Not installed]\e[0m\n"
@@ -377,30 +381,28 @@ display_menu() {
     echo ""
     echo -e "\e[1m\e[32m📋 MENU OPTIONS\e[0m"
     echo -e "\e[32m─────────────────────────────────────────────────────────────────────\e[0m"
-    printf "\e[32m%-40s %s\e[0m\n" "1. Set Static IP Address" "12. Install ODBC SQL Server 17"
-    printf "\e[32m%-40s %s\e[0m\n" "2. \e[91mUFW Firewall Management\e[32m" "13. Install PostgreSQL Server"
-    printf "\e[32m%-40s %s\e[0m\n" "3. Install SSH Server" "14. Show Installed Tools Status"
-    printf "\e[32m%-40s %s\e[0m\n" "4. Install Apache Web Server" "15. Setup Nginx Configuration"
-    printf "\e[32m%-40s %s\e[0m\n" "5. Install Nginx Web Server" "16. Install Composer"
-    printf "\e[32m%-40s %s\e[0m\n" "6. Install MySQL Server" "17. Setup Project Folder for Nginx"
-    printf "\e[32m%-40s %s\e[0m\n" "7. Install PHP (Multi-Version)" "18. Install Python3 and Pip"
-    printf "\e[32m%-40s %s\e[0m\n" "8. Install Docker" "19. Configure DNS Nameservers"
-    printf "\e[32m%-40s %s\e[0m\n" "9. Install Node.js (Multi-Version)" "20. Change Hostname & FQDN"
-    printf "\e[32m%-40s %s\e[0m\n" "10. Install Git" "21. \e[35mSSL: Local (Self-Signed)\e[32m"
-    printf "\e[32m%-40s %s\e[0m\n" "11. Configure DNS Nameservers" "22. \e[36mSSL: Public (Let's Encrypt)\e[32m"
-    printf "\e[32m%-40s %s\e[0m\n" "" "23. \e[93mDeploy Laravel from GitHub\e[32m"
-    printf "\e[32m%-40s %s\e[0m\n" "" "24. Manage GitHub SSH Key"
-    printf "\e[32m%-40s %s\e[0m\n" "" "25. \e[95mMonitoring: Node Exporter\e[32m"
-    printf "\e[32m%-40s %s\e[0m\n" "" "26. \e[31mAuto Uninstaller (Remove Apps)\e[32m"
-    echo -e "\e[33m═══════════════════════════════════════\e[0m"
+    echo -e "\e[32m1.  Set Static IP Address             13. Install PostgreSQL Server\e[0m"
+    echo -e "\e[91m2.  UFW Firewall Management\e[32m            14. Show Installed Tools Status\e[0m"
+    echo -e "\e[32m3.  Install SSH Server                 15. Setup Nginx Configuration\e[0m"
+    echo -e "\e[32m4.  Install Apache Web Server          16. Install Composer\e[0m"
+    echo -e "\e[32m5.  Install Nginx Web Server           17. Setup Project Folder for Nginx\e[0m"
+    echo -e "\e[32m6.  Install MySQL Server               18. Install Python3 and Pip\e[0m"
+    echo -e "\e[32m7.  Install PHP (Multi-Version)        19. Change Hostname & FQDN\e[0m"
+    echo -e "\e[32m8.  Install Docker                     20. Configure DNS Nameservers\e[0m"
+    echo -e "\e[32m9.  Install Node.js (Multi-Version)\e[35m    21. SSL: Local (Self-Signed)\e[0m"
+    echo -e "\e[32m10. Install Git\e[36m                        22. SSL: Public (Let's Encrypt)\e[0m"
+    echo -e "\e[32m11. Install ODBC SQL Server 17\e[93m         23. Deploy Laravel from GitHub\e[0m"
+    echo -e "\e[32m12. Manage GitHub SSH Key\e[95m              24. Monitoring: Node Exporter\e[0m"
+    echo -e "\e[31m                                       25. Auto Uninstaller (Remove Apps)\e[0m"
+    echo -e "\e[33m─────────────────────────────────────────────────────────────────────\e[0m"
     echo -e "\e[31m0. Exit\e[0m"
-    echo -e "\e[37mCreated by Mahardian Ramadhani\e[0m"
+    echo -e "\e[90mCreated by Mahardian Ramadhani\e[0m"
 }
 
 # Main menu loop
 while true; do
     display_menu
-    echo -e "\e[36mChoose an option (0-26):\e[0m"
+    echo -e "\e[36mChoose an option (0-25):\e[0m"
     read -r choice
 
     case $choice in
@@ -439,10 +441,10 @@ while true; do
             install_git
             ;;
         11)
-            configure_dns
+            install_odbc_sqlserver
             ;;
         12)
-            install_odbc_sqlserver
+            manage_github_ssh
             ;;
         13)
             install_postgresql
@@ -463,10 +465,10 @@ while true; do
             install_python
             ;;
         19)
-            configure_dns
+            change_hostname
             ;;
         20)
-            change_hostname
+            configure_dns
             ;;
         21)
             setup_local_ssl
@@ -478,16 +480,13 @@ while true; do
             deploy_laravel_project
             ;;
         24)
-            manage_github_ssh
-            ;;
-        25)
             monitoring_menu
             ;;
-        26)
+        25)
             uninstaller_menu
             ;;
         *)
-            echo -e "\e[31mInvalid option. Please choose 0-26.\e[0m"
+            echo -e "\e[31mInvalid option. Please choose 0-25.\e[0m"
             ;;
     esac
     echo ""
