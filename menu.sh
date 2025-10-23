@@ -390,12 +390,12 @@ display_menu() {
     echo -e "\e[32m5.  Install Nginx Web Server           18. Install Python3 and Pip\e[0m"
     echo -e "\e[32m6.  Install MySQL Server               19. Change Hostname & FQDN\e[0m"
     echo -e "\e[32m7.  Install PHP (Multi-Version)        20. Configure DNS Nameservers\e[0m"
-    echo -e "\e[32m8.  Install Docker\e[35m                     21. SSL: Local (Self-Signed)\e[0m"
-    echo -e "\e[32m9.  Install Node.js (Multi-Version)\e[36m    22. SSL: Public (Let's Encrypt)\e[0m"
-    echo -e "\e[32m10. Install Git\e[93m                        23. Deploy Laravel from GitHub\e[0m"
-    echo -e "\e[32m11. Install ODBC SQL Server 17\e[95m         24. Monitoring: Node Exporter\e[0m"
-    echo -e "\e[32m12. Manage GitHub SSH Key\e[31m              25. Auto Uninstaller\e[0m"
-    echo -e "\e[32m13. Install PostgreSQL Server\e[96m          26. Add Local Domain (hosts)\e[0m"
+    echo -e "\e[32m8.  Install Docker\e[35m                     21. SSL Certificate Management\e[0m"
+    echo -e "\e[32m9.  Install Node.js (Multi-Version)\e[93m    22. Deploy Laravel from GitHub\e[0m"
+    echo -e "\e[32m10. Install Git\e[95m                        23. Monitoring: Node Exporter\e[0m"
+    echo -e "\e[32m11. Install ODBC SQL Server 17\e[31m         24. Auto Uninstaller\e[0m"
+    echo -e "\e[32m12. Manage GitHub SSH Key\e[96m              25. Add Local Domain (hosts)\e[0m"
+    echo -e "\e[32m13. Install PostgreSQL Server\e[0m"
     echo -e "\e[33m─────────────────────────────────────────────────────────────────────\e[0m"
     echo -e "\e[31m0. Exit\e[0m"
     echo -e "\e[90mCreated by Mahardian Ramadhani\e[0m"
@@ -404,7 +404,7 @@ display_menu() {
 # Main menu loop
 while true; do
     display_menu
-    echo -e "\e[36mChoose an option (0-26):\e[0m"
+    echo -e "\e[36mChoose an option (0-25):\e[0m"
     read -r choice
 
     case $choice in
@@ -473,25 +473,22 @@ while true; do
             configure_dns
             ;;
         21)
-            setup_local_ssl
+            ssl_management_menu
             ;;
         22)
-            setup_letsencrypt_ssl
-            ;;
-        23)
             deploy_laravel_project
             ;;
-        24)
+        23)
             monitoring_menu
             ;;
-        25)
+        24)
             uninstaller_menu
             ;;
-        26)
+        25)
             manage_local_domains
             ;;
         *)
-            echo -e "\e[31mInvalid option. Please choose 0-26.\e[0m"
+            echo -e "\e[31mInvalid option. Please choose 0-25.\e[0m"
             ;;
     esac
     echo ""
