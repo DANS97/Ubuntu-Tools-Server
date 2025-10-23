@@ -84,15 +84,71 @@ diagnose_ssl_issues() {
     echo -e "\e[33mSuggested Actions:\e[0m"
     echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
     
-    if ! sudo ss -tuln | grep -q ":443 "; then
-        echo "  Port 443 not listening. Try:"
-        echo "    sudo systemctl restart nginx"
-        echo "    sudo nginx -t  # Test configuration"
+    # Dynamic suggestions based on diagnosis
+    local needs_setup=false
+    local needs_restart=false
+    
+    # Check if certificates exist
+    if [ ! -d /etc/ssl/private ] || [ -z "$(ls -A /etc/ssl/private/*.key 2>/dev/null)" ]; then
+        if [ ! -d /etc/letsencrypt/live ] || [ -z "$(sudo ls -A /etc/letsencrypt/live 2>/dev/null | grep -v README)" ]; then
+            needs_setup=true
+        fi
+    fi
+    
+    # Check if port 443 not listening but Nginx is running
+    if systemctl is-active --quiet nginx && ! sudo ss -tuln | grep -q ":443 "; then
+        needs_restart=true
+    fi
+    
+    if [ "$needs_setup" = true ]; then
+        echo ""
+        echo -e "\e[33m🔧 No SSL certificates found!\e[0m"
+        echo ""
+        echo "  To setup SSL, choose one of these options:"
+        echo ""
+        echo "  Option A: Local SSL (Self-Signed) - For Development"
+        echo "    → Go back to menu and select option 1"
+        echo "    → Best for: localhost, LAN access, testing"
+        echo ""
+        echo "  Option B: Public SSL (Let's Encrypt) - For Production"
+        echo "    → Go back to menu and select option 2"
+        echo "    → Best for: public websites with domain name"
+        echo "    → Requirements: domain DNS pointing to server"
+        echo ""
+    fi
+    
+    if [ "$needs_restart" = true ] && [ "$needs_setup" = false ]; then
+        echo ""
+        echo -e "\e[33m⚠ SSL certificates exist but port 443 not listening!\e[0m"
+        echo ""
+        echo "  Try these commands:"
+        echo "    1. Test Nginx configuration:"
+        echo "       sudo nginx -t"
+        echo ""
+        echo "    2. Restart Nginx:"
+        echo "       sudo systemctl restart nginx"
+        echo ""
+        echo "    3. Check port status:"
+        echo "       sudo ss -tuln | grep :443"
+        echo ""
+    fi
+    
+    if ! systemctl is-active --quiet nginx && ! systemctl is-active --quiet apache2; then
+        echo ""
+        echo -e "\e[31m⚠ No web server is running!\e[0m"
+        echo ""
+        echo "  You need to install a web server first:"
+        echo "    → Nginx: Go to main menu → option 5"
+        echo "    → Apache: Go to main menu → option 4"
+        echo ""
     fi
     
     if systemctl is-active --quiet apache2 && systemctl is-active --quiet nginx; then
-        echo "  Both Apache and Nginx are running (possible conflict):"
+        echo ""
+        echo -e "\e[33m⚠ Both Apache and Nginx are running!\e[0m"
+        echo "  This may cause port conflicts. Try:"
         echo "    sudo systemctl stop apache2"
+        echo ""
     fi
     
     echo ""
@@ -1233,17 +1289,83 @@ setup_letsencrypt_ssl() {
 # SSL Management Menu
 ssl_management_menu() {
     while true; do
+        clear
+        echo -e "\e[36m╔════════════════════════════════════════════════════════════════════╗\e[0m"
+        echo -e "\e[36m║                    SSL Certificate Management                      ║\e[0m"
+        echo -e "\e[36m╚════════════════════════════════════════════════════════════════════╝\e[0m"
         echo ""
-        echo -e "\e[36m=== SSL Management Menu ===\e[0m"
+        
+        # Quick status check
+        echo -e "\e[1m\e[33m📊 CURRENT SSL STATUS\e[0m"
+        echo -e "─────────────────────────────────────────────────────────────────────"
+        
+        # Check if any SSL certificates exist
+        local has_certs=false
+        local cert_count=0
+        
+        if [ -d /etc/ssl/private ] && [ "$(ls -A /etc/ssl/private/*.key 2>/dev/null)" ]; then
+            cert_count=$(ls -1 /etc/ssl/private/*.key 2>/dev/null | wc -l)
+            has_certs=true
+        fi
+        
+        if [ -d /etc/letsencrypt/live ] && [ "$(ls -A /etc/letsencrypt/live 2>/dev/null)" ]; then
+            local le_count=$(sudo ls -1 /etc/letsencrypt/live 2>/dev/null | grep -v README | wc -l)
+            cert_count=$((cert_count + le_count))
+            has_certs=true
+        fi
+        
+        # Port 443 status
+        if sudo ss -tuln | grep -q ":443 "; then
+            echo -e "  Port 443:        \e[32m✓ Listening\e[0m"
+        else
+            echo -e "  Port 443:        \e[31m✗ Not listening\e[0m"
+        fi
+        
+        # Certificate count
+        if [ "$has_certs" = true ]; then
+            echo -e "  Certificates:    \e[32m✓ $cert_count installed\e[0m"
+        else
+            echo -e "  Certificates:    \e[33m⚠ None installed\e[0m"
+        fi
+        
+        # Web server status
+        if systemctl is-active --quiet nginx; then
+            echo -e "  Web Server:      \e[32m✓ Nginx running\e[0m"
+        elif systemctl is-active --quiet apache2; then
+            echo -e "  Web Server:      \e[32m✓ Apache running\e[0m"
+        else
+            echo -e "  Web Server:      \e[31m✗ Not running\e[0m"
+        fi
+        
         echo ""
-        echo "1. Setup Local SSL (Self-Signed)"
-        echo "2. Setup Public SSL (Let's Encrypt)"
+        echo -e "\e[1m\e[33m🔧 MENU OPTIONS\e[0m"
+        echo -e "─────────────────────────────────────────────────────────────────────"
+        echo ""
+        
+        if [ "$has_certs" = false ]; then
+            echo -e "\e[33m💡 Tip: No SSL certificates found. Start with option 1 or 2.\e[0m"
+            echo ""
+        fi
+        
+        echo "1. Setup Local SSL (Self-Signed Certificate)"
+        echo "   └─ For development/testing on local network"
+        echo ""
+        echo "2. Setup Public SSL (Let's Encrypt - Free)"
+        echo "   └─ For production with public domain"
+        echo ""
         echo "3. Diagnose SSL Issues"
+        echo "   └─ Check SSL status and troubleshoot problems"
+        echo ""
         echo "4. List SSL Certificates"
+        echo "   └─ Show all installed certificates"
+        echo ""
         echo "5. Test SSL Connection"
+        echo "   └─ Verify HTTPS is working"
+        echo ""
         echo "0. Back to main menu"
         echo ""
-        read -p "Choose option: " ssl_choice
+        echo -e "\e[33m─────────────────────────────────────────────────────────────────────\e[0m"
+        read -p "Choose option (0-5): " ssl_choice
         
         case $ssl_choice in
             1)
