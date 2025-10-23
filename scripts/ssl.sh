@@ -2,6 +2,102 @@
 
 # SSL Certificate Management
 
+# Function to diagnose SSL issues
+diagnose_ssl_issues() {
+    echo -e "\e[36m=== SSL Diagnostics ===\e[0m"
+    echo ""
+    
+    # Check Nginx/Apache status
+    echo "1. Web Server Status:"
+    echo "─────────────────────────────────────"
+    if systemctl is-active --quiet nginx; then
+        echo -e "  Nginx: \e[32m● Running\e[0m"
+    else
+        echo -e "  Nginx: \e[31m○ Not running\e[0m"
+    fi
+    
+    if systemctl is-active --quiet apache2; then
+        echo -e "  Apache: \e[32m● Running\e[0m"
+    else
+        echo -e "  Apache: \e[90m○ Not running\e[0m"
+    fi
+    echo ""
+    
+    # Check listening ports
+    echo "2. Port 443 Status:"
+    echo "─────────────────────────────────────"
+    if sudo ss -tuln | grep -q ":443 "; then
+        echo -e "  \e[32m✓ Port 443 is LISTENING\e[0m"
+        echo ""
+        sudo ss -tulnp | grep ":443 "
+    else
+        echo -e "  \e[31m✗ Port 443 is NOT listening\e[0m"
+        echo ""
+        echo "  All HTTPS/SSL related ports:"
+        sudo ss -tuln | grep -E ":(443|8443)" || echo "  None found"
+    fi
+    echo ""
+    
+    # Check certificates
+    echo "3. SSL Certificates:"
+    echo "─────────────────────────────────────"
+    if [ -d /etc/ssl/private ]; then
+        local cert_count=$(ls -1 /etc/ssl/private/*.key 2>/dev/null | wc -l)
+        if [ $cert_count -gt 0 ]; then
+            echo -e "  \e[32m✓ Found $cert_count certificate(s)\e[0m"
+            ls -lh /etc/ssl/private/*.key 2>/dev/null | awk '{print "    " $9}'
+        else
+            echo -e "  \e[33m⚠ No certificates found\e[0m"
+        fi
+    fi
+    echo ""
+    
+    # Check Nginx configuration
+    echo "4. Nginx SSL Configuration:"
+    echo "─────────────────────────────────────"
+    if [ -d /etc/nginx/sites-enabled ]; then
+        local ssl_sites=0
+        for site in /etc/nginx/sites-enabled/*; do
+            if [ -f "$site" ] && grep -q "listen.*443.*ssl" "$site" 2>/dev/null; then
+                ssl_sites=$((ssl_sites + 1))
+                echo -e "  \e[32m✓\e[0m $(basename "$site")"
+            fi
+        done
+        if [ $ssl_sites -eq 0 ]; then
+            echo -e "  \e[33m⚠ No SSL sites configured\e[0m"
+        fi
+    fi
+    echo ""
+    
+    # Check recent errors
+    echo "5. Recent Errors (last 10 lines):"
+    echo "─────────────────────────────────────"
+    if [ -f /var/log/nginx/error.log ]; then
+        sudo tail -10 /var/log/nginx/error.log | sed 's/^/  /'
+    else
+        echo "  No error log found"
+    fi
+    echo ""
+    
+    # Suggested actions
+    echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+    echo -e "\e[33mSuggested Actions:\e[0m"
+    echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+    
+    if ! sudo ss -tuln | grep -q ":443 "; then
+        echo "  Port 443 not listening. Try:"
+        echo "    sudo systemctl restart nginx"
+        echo "    sudo nginx -t  # Test configuration"
+    fi
+    
+    if systemctl is-active --quiet apache2 && systemctl is-active --quiet nginx; then
+        echo "  Both Apache and Nginx are running (possible conflict):"
+        echo "    sudo systemctl stop apache2"
+    fi
+    
+    echo ""
+}
+
 # Function to generate self-signed SSL certificate
 generate_ssl_certificate() {
     echo -e "\e[36m=== Generate Self-Signed SSL Certificate ===\e[0m"
@@ -242,6 +338,9 @@ EOF
     if sudo ss -tuln | grep -q ":443 "; then
         echo -e "\e[32m✓ Port 443 is now listening\e[0m"
         sudo ss -tuln | grep ":443 "
+        echo ""
+        echo -e "\e[32m✓ Nginx SSL configured and restarted successfully!\e[0m"
+        return 0
     else
         echo -e "\e[31m✗ Port 443 is NOT listening\e[0m"
         echo ""
@@ -254,12 +353,34 @@ EOF
         echo ""
         echo "3. All listening ports:"
         sudo ss -tuln | grep LISTEN
+        echo ""
+        echo "4. Nginx configuration test:"
+        sudo nginx -t
+        echo ""
+        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+        echo -e "\e[33m⚠ Troubleshooting Steps:\e[0m"
+        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+        echo ""
+        echo "Run these commands to diagnose:"
+        echo "  1. Check Nginx is running:"
+        echo "     sudo systemctl status nginx"
+        echo ""
+        echo "  2. Check all ports:"
+        echo "     sudo ss -tuln | grep LISTEN"
+        echo ""
+        echo "  3. Check Nginx error log:"
+        echo "     sudo tail -50 /var/log/nginx/error.log"
+        echo ""
+        echo "  4. Restart Nginx manually:"
+        echo "     sudo systemctl restart nginx"
+        echo "     sudo ss -tuln | grep :443"
+        echo ""
+        echo "  5. Check if Apache is using port 443:"
+        echo "     sudo systemctl stop apache2"
+        echo "     sudo systemctl restart nginx"
+        echo ""
         return 1
     fi
-    
-    echo ""
-    echo -e "\e[32m✓ Nginx SSL configured and restarted successfully!\e[0m"
-    return 0
 }
 
 # Function to configure SSL for Apache
@@ -506,8 +627,18 @@ setup_local_ssl() {
             sudo ufw allow 443/tcp 2>/dev/null
             
             configure_nginx_ssl "$SSL_DOMAIN" "$SSL_KEY_FILE" "$SSL_CERT_FILE"
-            if [ $? -eq 0 ]; then
+            local config_result=$?
+            
+            if [ $config_result -eq 0 ]; then
                 test_ssl_configuration "$SSL_DOMAIN"
+            else
+                echo ""
+                echo -e "\e[31m✗ Nginx SSL configuration failed\e[0m"
+                echo ""
+                read -p "Run diagnostics? (y/n): " run_diag
+                if [[ $run_diag =~ ^[Yy]$ ]]; then
+                    diagnose_ssl_issues
+                fi
             fi
             ;;
         2)
@@ -517,8 +648,18 @@ setup_local_ssl() {
             sudo ufw allow 443/tcp 2>/dev/null
             
             configure_apache_ssl "$SSL_DOMAIN" "$SSL_KEY_FILE" "$SSL_CERT_FILE"
-            if [ $? -eq 0 ]; then
+            local config_result=$?
+            
+            if [ $config_result -eq 0 ]; then
                 test_ssl_configuration "$SSL_DOMAIN"
+            else
+                echo ""
+                echo -e "\e[31m✗ Apache SSL configuration failed\e[0m"
+                echo ""
+                read -p "Run diagnostics? (y/n): " run_diag
+                if [[ $run_diag =~ ^[Yy]$ ]]; then
+                    diagnose_ssl_issues
+                fi
             fi
             ;;
         0)
@@ -937,3 +1078,62 @@ setup_letsencrypt_ssl() {
             ;;
     esac
 }
+
+# SSL Management Menu
+ssl_management_menu() {
+    while true; do
+        echo ""
+        echo -e "\e[36m=== SSL Management Menu ===\e[0m"
+        echo ""
+        echo "1. Setup Local SSL (Self-Signed)"
+        echo "2. Setup Public SSL (Let's Encrypt)"
+        echo "3. Diagnose SSL Issues"
+        echo "4. List SSL Certificates"
+        echo "5. Test SSL Connection"
+        echo "0. Back to main menu"
+        echo ""
+        read -p "Choose option: " ssl_choice
+        
+        case $ssl_choice in
+            1)
+                setup_local_ssl
+                ;;
+            2)
+                setup_letsencrypt_ssl
+                ;;
+            3)
+                diagnose_ssl_issues
+                ;;
+            4)
+                echo ""
+                echo -e "\e[36m=== SSL Certificates ===\e[0m"
+                echo ""
+                if [ -d /etc/ssl/private ]; then
+                    echo "Self-Signed Certificates:"
+                    ls -lh /etc/ssl/private/*.key 2>/dev/null || echo "  None found"
+                fi
+                echo ""
+                if [ -d /etc/letsencrypt/live ]; then
+                    echo "Let's Encrypt Certificates:"
+                    sudo certbot certificates 2>/dev/null || echo "  None found"
+                fi
+                ;;
+            5)
+                echo ""
+                read -p "Enter domain to test (e.g., example.com or localhost): " test_domain
+                test_domain=${test_domain:-localhost}
+                test_ssl_configuration "$test_domain"
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                echo -e "\e[31mInvalid option.\e[0m"
+                ;;
+        esac
+        
+        echo ""
+        read -p "Press Enter to continue..."
+    done
+}
+
