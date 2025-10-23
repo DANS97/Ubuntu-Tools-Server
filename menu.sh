@@ -107,9 +107,11 @@ display_dashboard() {
     printf "%-25s %s / %s (%s%%)\n" "Memory:" "$mem_used" "$mem_total" "$mem_percent"
     
     # Get disk info
-    local disk_usage
-    disk_usage=$(df -h / | tail -1 | awk '{print $3 " / " $2 " (" $5 ")}')
-    printf "%-25s %s\n" "Disk Usage:" "$disk_usage"
+    local disk_used disk_total disk_percent
+    disk_used=$(df -h / | tail -1 | awk '{print $3}')
+    disk_total=$(df -h / | tail -1 | awk '{print $2}')
+    disk_percent=$(df -h / | tail -1 | awk '{print $5}')
+    printf "%-25s %s / %s (%s)\n" "Disk Usage:" "$disk_used" "$disk_total" "$disk_percent"
     
     echo ""
     
