@@ -203,14 +203,23 @@ configure_nginx_ssl() {
         echo "Processes using port 443:"
         sudo ss -tulnp | grep ":443 "
         echo ""
-        read -p "Stop existing service and continue? (y/n): " stop_service
-        if [[ $stop_service =~ ^[Yy]$ ]]; then
-            # Try to stop Apache if it's using 443
-            sudo systemctl stop apache2 2>/dev/null || true
-            sleep 2
-        else
-            return 1
-        fi
+        while true; do
+            read -p "Stop existing service and continue? (y/n): " stop_service
+            case $stop_service in
+                [Yy]|[Yy][Ee][Ss])
+                    # Try to stop Apache if it's using 443
+                    sudo systemctl stop apache2 2>/dev/null || true
+                    sleep 2
+                    break
+                    ;;
+                [Nn]|[Nn][Oo])
+                    return 1
+                    ;;
+                *)
+                    echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                    ;;
+            esac
+        done
     fi
     
     # Detect PHP version for configuration
@@ -585,20 +594,40 @@ setup_local_ssl() {
         echo -e "\e[33m⚠ Existing SSL certificates found:\e[0m"
         ls -lh /etc/ssl/private/*.key 2>/dev/null | awk '{print "  " $9}'
         echo ""
-        read -p "Generate new certificate? (y/n): " gen_new
-        if [[ ! $gen_new =~ ^[Yy]$ ]]; then
-            echo -e "\e[33mSetup cancelled.\e[0m"
-            return 0
-        fi
+        while true; do
+            read -p "Generate new certificate? (y/n): " gen_new
+            case $gen_new in
+                [Yy]|[Yy][Ee][Ss])
+                    break
+                    ;;
+                [Nn]|[Nn][Oo])
+                    echo -e "\e[33mSetup cancelled.\e[0m"
+                    return 0
+                    ;;
+                *)
+                    echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                    ;;
+            esac
+        done
         existing_certs=true
     fi
     
     echo ""
-    read -p "Continue with SSL setup? (y/n): " continue_ssl
-    if [[ ! $continue_ssl =~ ^[Yy]$ ]]; then
-        echo -e "\e[33mSetup cancelled.\e[0m"
-        return 0
-    fi
+    while true; do
+        read -p "Continue with SSL setup? (y/n): " continue_ssl
+        case $continue_ssl in
+            [Yy]|[Yy][Ee][Ss])
+                break
+                ;;
+            [Nn]|[Nn][Oo])
+                echo -e "\e[33mSetup cancelled.\e[0m"
+                return 0
+                ;;
+            *)
+                echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                ;;
+        esac
+    done
     
     # Generate certificate
     echo ""
@@ -635,10 +664,21 @@ setup_local_ssl() {
                 echo ""
                 echo -e "\e[31m✗ Nginx SSL configuration failed\e[0m"
                 echo ""
-                read -p "Run diagnostics? (y/n): " run_diag
-                if [[ $run_diag =~ ^[Yy]$ ]]; then
-                    diagnose_ssl_issues
-                fi
+                while true; do
+                    read -p "Run diagnostics? (y/n): " run_diag
+                    case $run_diag in
+                        [Yy]|[Yy][Ee][Ss])
+                            diagnose_ssl_issues
+                            break
+                            ;;
+                        [Nn]|[Nn][Oo])
+                            break
+                            ;;
+                        *)
+                            echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                            ;;
+                    esac
+                done
             fi
             ;;
         2)
@@ -656,10 +696,21 @@ setup_local_ssl() {
                 echo ""
                 echo -e "\e[31m✗ Apache SSL configuration failed\e[0m"
                 echo ""
-                read -p "Run diagnostics? (y/n): " run_diag
-                if [[ $run_diag =~ ^[Yy]$ ]]; then
-                    diagnose_ssl_issues
-                fi
+                while true; do
+                    read -p "Run diagnostics? (y/n): " run_diag
+                    case $run_diag in
+                        [Yy]|[Yy][Ee][Ss])
+                            diagnose_ssl_issues
+                            break
+                            ;;
+                        [Nn]|[Nn][Oo])
+                            break
+                            ;;
+                        *)
+                            echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                            ;;
+                    esac
+                done
             fi
             ;;
         0)
@@ -739,10 +790,20 @@ setup_letsencrypt_nginx() {
         echo "  2. Port 80 is open and forwarded"
         echo "  3. Firewall allows HTTP traffic"
         echo ""
-        read -p "Continue anyway? (y/n): " continue_choice
-        if [[ ! $continue_choice =~ ^[Yy]$ ]]; then
-            return 1
-        fi
+        while true; do
+            read -p "Continue anyway? (y/n): " continue_choice
+            case $continue_choice in
+                [Yy]|[Yy][Ee][Ss])
+                    break
+                    ;;
+                [Nn]|[Nn][Oo])
+                    return 1
+                    ;;
+                *)
+                    echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                    ;;
+            esac
+        done
     fi
     
     # Stop any process using port 80 temporarily
@@ -872,10 +933,20 @@ setup_letsencrypt_apache() {
         echo -e "\e[33m⚠ Warning: Domain may not be accessible from internet\e[0m"
         echo "Make sure DNS A record points to this server"
         echo ""
-        read -p "Continue anyway? (y/n): " continue_choice
-        if [[ ! $continue_choice =~ ^[Yy]$ ]]; then
-            return 1
-        fi
+        while true; do
+            read -p "Continue anyway? (y/n): " continue_choice
+            case $continue_choice in
+                [Yy]|[Yy][Ee][Ss])
+                    break
+                    ;;
+                [Nn]|[Nn][Oo])
+                    return 1
+                    ;;
+                *)
+                    echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                    ;;
+            esac
+        done
     fi
     
     # Obtain certificate using Apache plugin
@@ -1007,10 +1078,21 @@ setup_letsencrypt_ssl() {
         echo ""
     fi
     
-    read -p "Continue? (y/n): " continue_setup
-    if [[ ! $continue_setup =~ ^[Yy]$ ]]; then
-        return 0
-    fi
+    while true; do
+        read -p "Continue? (y/n): " continue_setup
+        case $continue_setup in
+            [Yy]|[Yy][Ee][Ss])
+                break
+                ;;
+            [Nn]|[Nn][Oo])
+                echo -e "\e[33mSetup cancelled.\e[0m"
+                return 0
+                ;;
+            *)
+                echo -e "\e[31mInvalid input. Please enter 'y' or 'n'.\e[0m"
+                ;;
+        esac
+    done
     
     # Get domain
     echo ""
