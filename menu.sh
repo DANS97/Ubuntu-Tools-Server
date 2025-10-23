@@ -396,6 +396,7 @@ display_menu() {
     echo -e "\e[32m11. Install ODBC SQL Server 17\e[93m         23. Deploy Laravel from GitHub\e[0m"
     echo -e "\e[32m12. Manage GitHub SSH Key\e[95m              24. Monitoring: Node Exporter\e[0m"
     echo -e "\e[31m                                       25. Auto Uninstaller (Remove Apps)\e[0m"
+    echo -e "\e[96m                                       26. Add Local Domain (hosts file)\e[0m"
     echo -e "\e[33m─────────────────────────────────────────────────────────────────────\e[0m"
     echo -e "\e[31m0. Exit\e[0m"
     echo -e "\e[90mCreated by Mahardian Ramadhani\e[0m"
@@ -404,7 +405,7 @@ display_menu() {
 # Main menu loop
 while true; do
     display_menu
-    echo -e "\e[36mChoose an option (0-25):\e[0m"
+    echo -e "\e[36mChoose an option (0-26):\e[0m"
     read -r choice
 
     case $choice in
@@ -487,8 +488,11 @@ while true; do
         25)
             uninstaller_menu
             ;;
+        26)
+            manage_local_domains
+            ;;
         *)
-            echo -e "\e[31mInvalid option. Please choose 0-25.\e[0m"
+            echo -e "\e[31mInvalid option. Please choose 0-26.\e[0m"
             ;;
     esac
     echo ""
