@@ -93,12 +93,48 @@ configure_nginx_ssl() {
         return 1
     fi
     
+    # Verify certificate files exist
+    if [ ! -f "$key_file" ] || [ ! -f "$cert_file" ]; then
+        echo -e "\e[31m✗ Certificate files not found!\e[0m"
+        echo "  Key: $key_file"
+        echo "  Cert: $cert_file"
+        return 1
+    fi
+    
+    # Check if port 443 is already in use
+    if sudo ss -tuln | grep -q ":443 "; then
+        echo -e "\e[33m⚠ Port 443 is already in use\e[0m"
+        echo "Processes using port 443:"
+        sudo ss -tulnp | grep ":443 "
+        echo ""
+        read -p "Stop existing service and continue? (y/n): " stop_service
+        if [[ $stop_service =~ ^[Yy]$ ]]; then
+            # Try to stop Apache if it's using 443
+            sudo systemctl stop apache2 2>/dev/null || true
+            sleep 2
+        else
+            return 1
+        fi
+    fi
+    
+    # Detect PHP version for configuration
+    local php_socket="/var/run/php/php-fpm.sock"
+    for version in 8.4 8.3 8.2 8.1 8.0 7.4; do
+        if [ -S "/var/run/php/php${version}-fpm.sock" ]; then
+            php_socket="/var/run/php/php${version}-fpm.sock"
+            echo -e "\e[32m✓ Detected PHP ${version}-FPM\e[0m"
+            break
+        fi
+    done
+    
     # Backup default config
     if [ -f /etc/nginx/sites-available/default ]; then
-        sudo cp /etc/nginx/sites-available/default "/etc/nginx/sites-available/default.backup-$(date +%Y%m%d)"
+        sudo cp /etc/nginx/sites-available/default "/etc/nginx/sites-available/default.backup-$(date +%Y%m%d-%H%M%S)"
+        echo -e "\e[32m✓ Backup created\e[0m"
     fi
     
     # Create SSL configuration
+    echo "Creating Nginx SSL configuration..."
     cat <<EOF | sudo tee /etc/nginx/sites-available/default > /dev/null
 # HTTP - Redirect to HTTPS
 server {
@@ -143,7 +179,7 @@ server {
     # PHP Configuration
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_pass unix:${php_socket};
     }
 
     location ~ /\.ht {
@@ -152,17 +188,78 @@ server {
 }
 EOF
 
+    echo -e "\e[32m✓ Configuration file created\e[0m"
+    
     # Test Nginx configuration
-    if sudo nginx -t 2>/dev/null; then
-        # Restart Nginx
-        sudo systemctl restart nginx
-        echo -e "\e[32m✓ Nginx SSL configured and restarted successfully!\e[0m"
-        return 0
+    echo ""
+    echo "Testing Nginx configuration..."
+    if sudo nginx -t 2>&1 | tee /tmp/nginx-test.log; then
+        echo -e "\e[32m✓ Nginx configuration test passed\e[0m"
     else
         echo -e "\e[31m✗ Nginx configuration test failed!\e[0m"
-        sudo nginx -t
+        echo ""
+        echo "Error details:"
+        cat /tmp/nginx-test.log
+        rm -f /tmp/nginx-test.log
         return 1
     fi
+    
+    # Stop Nginx first
+    echo ""
+    echo "Restarting Nginx..."
+    sudo systemctl stop nginx 2>/dev/null || true
+    sleep 2
+    
+    # Start Nginx
+    if sudo systemctl start nginx; then
+        echo -e "\e[32m✓ Nginx started successfully\e[0m"
+    else
+        echo -e "\e[31m✗ Failed to start Nginx\e[0m"
+        echo ""
+        echo "Nginx status:"
+        sudo systemctl status nginx --no-pager -l
+        return 1
+    fi
+    
+    # Wait a moment for Nginx to fully start
+    sleep 2
+    
+    # Verify Nginx is running
+    if sudo systemctl is-active --quiet nginx; then
+        echo -e "\e[32m✓ Nginx is running\e[0m"
+    else
+        echo -e "\e[31m✗ Nginx is not running\e[0m"
+        echo ""
+        echo "Checking logs..."
+        sudo journalctl -u nginx -n 20 --no-pager
+        return 1
+    fi
+    
+    # Verify port 443 is listening
+    echo ""
+    echo "Verifying port 443..."
+    sleep 1
+    if sudo ss -tuln | grep -q ":443 "; then
+        echo -e "\e[32m✓ Port 443 is now listening\e[0m"
+        sudo ss -tuln | grep ":443 "
+    else
+        echo -e "\e[31m✗ Port 443 is NOT listening\e[0m"
+        echo ""
+        echo "Debugging information:"
+        echo "1. Nginx status:"
+        sudo systemctl status nginx --no-pager -l
+        echo ""
+        echo "2. Recent Nginx errors:"
+        sudo tail -20 /var/log/nginx/error.log 2>/dev/null || echo "No error log found"
+        echo ""
+        echo "3. All listening ports:"
+        sudo ss -tuln | grep LISTEN
+        return 1
+    fi
+    
+    echo ""
+    echo -e "\e[32m✓ Nginx SSL configured and restarted successfully!\e[0m"
+    return 0
 }
 
 # Function to configure SSL for Apache
@@ -267,11 +364,41 @@ test_ssl_configuration() {
     echo ""
     
     # Check if port 443 is open
+    echo "Checking if SSL port ${port} is listening..."
     if sudo ss -tuln | grep -q ":${port} "; then
         echo -e "\e[32m✓ SSL port ${port} is listening\e[0m"
+        echo ""
+        echo "Port details:"
+        sudo ss -tulnp | grep ":${port} "
     else
         echo -e "\e[31m✗ SSL port ${port} is not listening\e[0m"
+        echo ""
+        echo "Possible issues:"
+        echo "  1. Nginx/Apache failed to start"
+        echo "  2. Configuration error"
+        echo "  3. Port blocked by firewall"
+        echo "  4. Another service using the port"
+        echo ""
+        echo "All listening ports:"
+        sudo ss -tuln | grep LISTEN
+        echo ""
+        echo "Nginx/Apache status:"
+        sudo systemctl status nginx --no-pager -l 2>/dev/null || sudo systemctl status apache2 --no-pager -l 2>/dev/null
         return 1
+    fi
+    
+    # Check firewall
+    echo ""
+    echo "Checking firewall rules..."
+    if command -v ufw &> /dev/null; then
+        if sudo ufw status 2>/dev/null | grep -q "443.*ALLOW"; then
+            echo -e "\e[32m✓ UFW allows port 443\e[0m"
+        else
+            echo -e "\e[33m⚠ UFW may not allow port 443\e[0m"
+            echo "Adding firewall rule..."
+            sudo ufw allow 443/tcp 2>/dev/null
+            echo -e "\e[32m✓ Port 443 opened in firewall\e[0m"
+        fi
     fi
     
     # Test SSL certificate
@@ -284,15 +411,21 @@ test_ssl_configuration() {
     # Show certificate details
     echo ""
     echo "Certificate information:"
-    timeout 5 openssl s_client -connect localhost:${port} -servername "${domain}" </dev/null 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null
+    timeout 5 openssl s_client -connect localhost:${port} -servername "${domain}" </dev/null 2>/dev/null | openssl x509 -noout -subject -dates 2>/dev/null || echo "Unable to retrieve certificate info"
     
     # Test HTTPS connection
     echo ""
     echo "Testing HTTPS connection..."
-    if curl -k -s -o /dev/null -w "%{http_code}" "https://localhost" | grep -q "200\|301\|302"; then
-        echo -e "\e[32m✓ HTTPS is working!\e[0m"
+    local http_code
+    http_code=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost" 2>/dev/null)
+    
+    if echo "$http_code" | grep -q "200\|301\|302"; then
+        echo -e "\e[32m✓ HTTPS is working! (HTTP code: $http_code)\e[0m"
     else
-        echo -e "\e[31m✗ HTTPS connection failed\e[0m"
+        echo -e "\e[31m✗ HTTPS connection failed (HTTP code: $http_code)\e[0m"
+        echo ""
+        echo "Debugging: Testing with curl verbose..."
+        curl -kv "https://localhost" 2>&1 | head -20
     fi
     
     echo ""
@@ -300,11 +433,16 @@ test_ssl_configuration() {
     echo ""
     echo "Access your site:"
     echo "  https://${domain}"
+    echo "  https://$(hostname -I | awk '{print $1}')"
     echo ""
     echo -e "\e[33mNote for browsers:\e[0m"
     echo "  1. Browser will show 'Not Secure' warning (expected for self-signed)"
     echo "  2. Click 'Advanced' -> 'Proceed to ${domain}' to accept certificate"
     echo "  3. For production, use Let's Encrypt for trusted certificates"
+    echo ""
+    echo "Verify with command:"
+    echo "  curl -k https://localhost"
+    echo "  curl -k https://${domain}"
 }
 
 # Main SSL setup function
@@ -318,7 +456,31 @@ setup_local_ssl() {
     echo "  4. Test SSL configuration"
     echo ""
     
+    # Check if certificates already exist
+    echo "Checking for existing SSL certificates..."
+    local existing_certs=false
+    if [ -d /etc/ssl/private ] && [ "$(ls -A /etc/ssl/private/*.key 2>/dev/null)" ]; then
+        echo ""
+        echo -e "\e[33m⚠ Existing SSL certificates found:\e[0m"
+        ls -lh /etc/ssl/private/*.key 2>/dev/null | awk '{print "  " $9}'
+        echo ""
+        read -p "Generate new certificate? (y/n): " gen_new
+        if [[ ! $gen_new =~ ^[Yy]$ ]]; then
+            echo -e "\e[33mSetup cancelled.\e[0m"
+            return 0
+        fi
+        existing_certs=true
+    fi
+    
+    echo ""
+    read -p "Continue with SSL setup? (y/n): " continue_ssl
+    if [[ ! $continue_ssl =~ ^[Yy]$ ]]; then
+        echo -e "\e[33mSetup cancelled.\e[0m"
+        return 0
+    fi
+    
     # Generate certificate
+    echo ""
     generate_ssl_certificate
     
     if [ -z "$SSL_DOMAIN" ]; then
@@ -331,7 +493,7 @@ setup_local_ssl() {
     echo "Select web server to configure:"
     echo "1. Nginx"
     echo "2. Apache"
-    echo "0. Skip configuration"
+    echo "0. Skip configuration (certificate only)"
     echo ""
     echo -n "Choose option: "
     read -r webserver_choice
@@ -339,6 +501,8 @@ setup_local_ssl() {
     case $webserver_choice in
         1)
             # Open firewall for HTTPS
+            echo ""
+            echo -e "\e[33mOpening firewall port 443...\e[0m"
             sudo ufw allow 443/tcp 2>/dev/null
             
             configure_nginx_ssl "$SSL_DOMAIN" "$SSL_KEY_FILE" "$SSL_CERT_FILE"
@@ -348,6 +512,8 @@ setup_local_ssl() {
             ;;
         2)
             # Open firewall for HTTPS
+            echo ""
+            echo -e "\e[33mOpening firewall port 443...\e[0m"
             sudo ufw allow 443/tcp 2>/dev/null
             
             configure_apache_ssl "$SSL_DOMAIN" "$SSL_KEY_FILE" "$SSL_CERT_FILE"
@@ -357,15 +523,29 @@ setup_local_ssl() {
             ;;
         0)
             echo ""
-            echo "Certificate generated but not configured."
-            echo "You can manually configure using:"
+            echo -e "\e[32m✓ Certificate generated successfully!\e[0m"
+            echo ""
+            echo "Certificate details:"
+            echo "  Domain: $SSL_DOMAIN"
             echo "  Key: $SSL_KEY_FILE"
             echo "  Certificate: $SSL_CERT_FILE"
+            echo ""
+            echo "You can manually configure your web server using these files."
             ;;
         *)
             echo -e "\e[31mInvalid option.\e[0m"
+            echo ""
+            echo "Certificate files (not configured):"
+            echo "  Key: $SSL_KEY_FILE"
+            echo "  Certificate: $SSL_CERT_FILE"
             ;;
     esac
+    
+    # Clear exported variables to prevent reuse
+    unset SSL_DOMAIN SSL_KEY_FILE SSL_CERT_FILE
+    
+    echo ""
+    echo -e "\e[32m=== SSL Setup Complete ===\e[0m"
 }
 
 # Function to install Certbot
